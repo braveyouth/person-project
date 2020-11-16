@@ -1,6 +1,8 @@
 .idea
 */target
+*/out
 */log
+*/.gradle
 logPath_IS_UNDEFINED
 
 *.iml
