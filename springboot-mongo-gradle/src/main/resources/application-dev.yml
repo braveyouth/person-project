@@ -1,0 +1,10 @@
+# 数据源配置
+spring:
+  data:
+    mongodb:
+      uri: mongodb://classroom:Spring_0218@119.96.203.4:35861/classroom
+#      host: localhost
+#      port: 27017
+#      database: classroom
+#      username: classroom
+#      password: Zxt@07-30

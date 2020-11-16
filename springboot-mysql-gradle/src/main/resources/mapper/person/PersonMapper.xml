@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.mapper.PersonMapper">
+
+
+    <!--身份证号是否已经存在-->
+    <select id="hasIdCard" resultType="java.lang.Integer">
+        SELECT COUNT(0)
+        FROM person
+        WHERE id_card=#{idCard}
+    </select>
+
+
+    <!--当前获取赠险名额是否达到限制、已领取份数-->
+    <select id="limitReach" resultType="java.lang.Integer">
+        SELECT COUNT(0)
+        FROM person
+    </select>
+
+    <!--增加获取赠险的人员信息-->
+    <insert id="getDao">
+        INSERT INTO person(name,
+        id_card,
+        phone,
+        email,
+        bank_card,
+        que_one,
+        que_two,
+        que_three,
+        que_four,
+        que_five)
+        VALUES (#{name},
+        #{idCard},
+        #{phone},
+        #{email},
+        #{bankCard},
+        #{queOne},
+        #{queTwo},
+        #{queThree},
+        #{queFour},
+        #{queFive},
+        #{time})
+    </insert>
+
+
+    <!--查询-->
+    <select id="selectDao" resultType="com.example.common.response.Res1001">
+        SELECT name,
+        id_card idCard,
+        phone,
+        email,
+        bank_card bankCard,
+        que_one queOne,
+        que_two queTwo,
+        que_three queThree,
+        que_four queFour,
+        que_five queFive,
+        time
+        FROM person
+    </select>
+
+
+</mapper>

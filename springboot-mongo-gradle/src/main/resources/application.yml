@@ -1,0 +1,36 @@
+# 开发环境配置
+server:
+# 服务器端口
+  port: 8080
+  servlet:
+  # 应用访问路径
+    context-path: /smg
+  tomcat:
+    # tomcat的URI编码
+    uri-encoding: utf-8
+    # tomcat最大线程数，默认为200
+    max-threads: 800
+    # tomcat启动初始化线程数，默认为25
+    min-spare-threads: 30
+
+# 日志配置
+logging:
+  level:
+    com.example: debug
+  file:
+    path: logs
+
+# spring配置
+spring:
+  application:
+      name: 个人项目-springboot-mongo-gradle
+  output:
+    ansi:
+      enabled: always
+  # 启动哪个配置开发
+  profiles:
+    active: dev
+  mvc:
+    static-path-pattern: /*
+  resources:
+    static-locations: classpath:webapp/

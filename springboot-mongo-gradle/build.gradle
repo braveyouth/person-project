@@ -1,0 +1,41 @@
+plugins {
+	id 'org.springframework.boot' version '2.2.6.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+	id 'java'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenLocal()
+	maven { url "http://maven.aliyun.com/nexus/content/groups/public" }
+//	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+
+
+	//lombok
+	implementation 'org.projectlombok:lombok:1.16.12'
+	//swagger2.7.0API文档支持
+	implementation 'io.springfox:springfox-swagger2:2.7.0'
+	implementation 'io.springfox:springfox-swagger-ui:2.7.0'
+
+	//commons
+	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
+	implementation 'commons-codec:commons-codec:1.6'
+
+	// 依赖maven中不存在的jar
+	implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+test {
+	useJUnitPlatform()
+}

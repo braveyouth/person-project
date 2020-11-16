@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="pragram" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache,no-store, must-revalidate">
+    <meta http-equiv="expires" content="0">
+    <link rel="stylesheet" href="lib/mui/css/mui.min.css">
+    <link rel="stylesheet" href="lib/mui/css/mui.picker.min.css">
+    <link rel="stylesheet" href="lib/mui/css/mui.poppicker.css">
+    <link rel="stylesheet" href="css/index.css?time=567">
+    <script src="lib/mui/js/mui.min.js"></script>
+    <title>光大保险赠险</title>
+    <style>
+        body{
+            font-family: "PingFang SC";
+            background-color: white;
+        }
+        .content table tr .td-l {
+            color: #999;
+            vertical-align: top;
+            padding-left: 5%;
+            width: 60%;
+        }
+        .content .phone-tit {
+            background: none;
+        }
+        .content table tr .td-rt{
+            font-size: 14px;
+            color: black;
+            text-align: right;
+            padding-right: 5%;
+        }
+        .notice1{
+            padding: 0 5% 0 5%;
+            font-size: 12px;
+            color: red;
+        }
+        .bgcolor1 {
+            /*background-color: #B01109;*/
+            padding: 15px 10px 0px 10px;
+            margin-bottom: 0 !important;
+            /*background: url(images/intr.jpg) no-repeat left center;
+            background-size: 100%;*/
+        }
+        .tr-border{
+            border-bottom: 1px solid #B7B7B7;
+        }
+        input{
+            border: none!important;
+            width: 60%!important;
+        }
+        .agree{
+            color: white;
+            font-size: 10px!important;
+            background: url("images/pick.png") no-repeat left center;
+            background-size: 12px;
+            padding-left: 18px;
+        }
+        .agree-y{
+            color: white;
+            font-size: 10px!important;
+            background: url("images/nopick.png") no-repeat left center;
+            background-size: 12px;
+            padding-left: 18px;
+        }
+        .btn-next {
+            width: 35%;
+            margin: 20px auto;
+            padding: 10px 16px;
+            font-size: 18px;
+            line-height: 1.3333333;
+            color: #fff;
+            background: #B01109 none repeat scroll 0 0;
+            border-radius: 35px;
+            text-align: center;
+        }
+        /*TT*/
+        .imgDiv{
+            width: 94%;
+            height: 100px;
+            border: 1px solid rgba(0,0,0,.2);
+            margin-bottom: 15px;
+        }
+        .imgDiv img{
+            width: 52%;
+            height: 98px;
+            display: none;
+            border:0;
+            border-color:#fff;
+            outline:0;
+            position: absolute;
+        }
+        #form1 input[type='file'],#form2 input[type='file'],#form3 input[type='file']{
+            opacity: 0;
+            border:0;
+            /*border: 1px solid rgba(0,0,0,.2);*/
+            height: 100px;
+            /* margin-top: -100px;*/
+            position: absolute;
+            width: 56%;
+            outline: 0;
+        }
+        #mask{
+            display:none;
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            text-align:center;
+            z-index: 998;
+            background-color: rgba(0,0,0,.3);
+        }
+    </style>
+</head>
+<body>
+<input type="hidden" id="addr">
+<input type="hidden" id="addr1">
+<input type="hidden" id="idCard1">
+<input type="hidden" id="idCard2">
+<input type="hidden" id="idCard3">
+<!--<div class="header" style="background-color: white;color: black">
+    <div class="back-icon" onclick="back()"><i class="mui-icon mui-icon-arrowleft"></i>返回</div>
+    <div class="header-title" id="phoneName">如何申请</div>
+</div>-->
+<img src="images/intr.jpg" style="width: 100%"/>
+<div class="btn-next" onclick="back()">确定</div>
+
+<!--<div class="content bgcolor1">
+
+    <div class="phone-tit">您正在办理以下业务</div>
+    <div style="background-color: #fff;border-radius: 4px 4px 4px 4px;height: 90vh;display: none">
+        *查看电子账户信息流程:光大银行APP- >我的账户->
+        卡管理，查看该账户是否为电子账户类，若是则返回
+        “我的账户”，点击“查看全卡号”进行卡号查询，并返
+        回本页面领取赠险;
+        *若无电子账户，请在“我的账户”页面申请电子账户完
+        成后，返回本页面领取赠险。
+    </div>
+
+
+</div>-->
+<div id="mask"><img style="margin-top:200px" src="images/loading.gif"></div>
+<script type="text/javascript">
+    document.write("<script src='js/common.js?ver=" +Math.round(Math.random()*10000)+ "'><" + "/script>");
+</script>
+<script>
+    function back(){
+        window.location.href='gdEdit2.html?ver='+Math.round(Math.random()*100000);
+    }
+</script>
+</body>
+</html>

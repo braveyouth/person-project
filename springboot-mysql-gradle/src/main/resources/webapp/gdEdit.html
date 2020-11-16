@@ -1,0 +1,452 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="pragram" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache,no-store, must-revalidate">
+    <meta http-equiv="expires" content="0">
+    <link rel="stylesheet" href="lib/mui/css/mui.min.css">
+    <link rel="stylesheet" href="lib/mui/css/mui.picker.min.css">
+    <link rel="stylesheet" href="lib/mui/css/mui.poppicker.css">
+    <link rel="stylesheet" href="css/index.css?time=567">
+    <script src="lib/mui/js/mui.min.js"></script>
+    <title>光大保险赠险</title>
+    <style>
+        body{
+            font-family: "PingFang SC";
+        }
+        .content table tr .td-l {
+            color: #999;
+            vertical-align: top;
+            padding-left: 5%;
+            width: 60%;
+        }
+        .content .phone-tit {
+            background: none;
+        }
+        .content table tr .td-rt{
+            font-size: 14px;
+            color: black;
+            text-align: right;
+            padding-right: 5%;
+        }
+        .notice1{
+            padding: 0 5% 0 5%;
+            font-size: 12px;
+            color: red;
+        }
+        .bgcolor1 {
+            background-color: #B01109;
+            padding: 10px 10px 20px 10px;
+            margin-bottom: 0 !important;
+        }
+        .tr-border{
+            border-bottom: 1px solid #B7B7B7;
+        }
+        input{
+            border: none!important;
+            width: 60%!important;
+        }
+        .agree{
+            color: white;
+            font-size: 10px!important;
+            background: url("images/pick.png") no-repeat left center;
+            background-size: 15px;
+            padding-left: 20px;
+        }
+        .agree-y{
+            color: white;
+            font-size: 10px!important;
+            background: url("images/nopick.png") no-repeat left center;
+            background-size: 15px;
+            padding-left: 20px;
+        }
+        .content .btn-next {
+            width: 85%;
+            margin: 20px auto;
+            padding: 10px 16px;
+            font-size: 18px;
+            line-height: 1.3333333;
+            color: #fff;
+            /*background: #34b372 none repeat scroll 0 0;*/
+            background: url("images/get.png") no-repeat;
+            background-size: 100%;
+            height: 12vw;
+            text-align: center;
+        }
+        .td_left{
+            padding-top: 8px;
+            width:90px
+        }
+        .td_m{
+            padding-top: 10px;
+        }
+        #pickNum{
+            margin: -15px auto 10px;
+            text-align: center;
+        }
+        /*TT*/
+        .imgDiv{
+            width: 94%;
+            height: 100px;
+            border: 1px solid rgba(0,0,0,.2);
+            margin-bottom: 15px;
+        }
+        .imgDiv img{
+            width: 52%;
+            height: 98px;
+            display: none;
+            border:0;
+            border-color:#fff;
+            outline:0;
+            position: absolute;
+        }
+        #form1 input[type='file'],#form2 input[type='file'],#form3 input[type='file']{
+            opacity: 0;
+            border:0;
+            /*border: 1px solid rgba(0,0,0,.2);*/
+            height: 100px;
+            /* margin-top: -100px;*/
+            position: absolute;
+            width: 56%;
+            outline: 0;
+        }
+        #mask{
+            display:none;
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            text-align:center;
+            z-index: 998;
+            background-color: rgba(0,0,0,.3);
+        }
+    </style>
+</head>
+<body>
+<input type="hidden" id="addr">
+<input type="hidden" id="addr1">
+<input type="hidden" id="idCard1">
+<input type="hidden" id="idCard2">
+<input type="hidden" id="idCard3">
+<nav class="navbar">
+    <a href="#"><img src="images/top-nav01.jpg" class="" alt="武汉加油！"></a>
+</nav>
+<!--<div class="header">
+    <div class="back-icon" onclick="back()"><i class="mui-icon mui-icon-arrowleft"></i>返回</div>
+    <div class="header-title" id="phoneName"></div>
+</div>-->
+<div class="content bgcolor1">
+    <!--<div class="phone-tit">您正在办理以下业务</div>-->
+    <div style="background-color: #fff;border-radius: 4px 4px 4px 4px;">
+        <table>
+            <tr><td align="left" class="td-l" style="font-size: 16px;font-weight: 900;color: black">保险责任</td></tr>
+            <tr><td align="left" class="td-l">确诊感染新型肺炎导致身故：</td><td id="phoneName1" class="td-rt">5万元</td></tr>
+            <tr><td align="left" class="td-l">民航班机交通意外：</td><td id="deadline" class="td-rt">5万元</td></tr>
+            <tr><td align="left" class="td-l" width="90px">火车交通意外：</td><td id="freezeAmount" class="td-rt">2万元</td></tr>
+            <!--<tr><td align="right" class="td-l">商品预存：</td><td id="preStore">元</td></tr>-->
+            <tr><td align="left" class="td-l">地铁交通意外：</td><td id="phoneNumber" class="td-rt">2万元</td></tr>
+            <!--<tr><td align="left" class="td-l" style="width: 80px">所选套餐：</td><td id="prodOfferName"></td></tr>-->
+        </table>
+        <div class="notice1">*注:1.不承担投保前已确诊或疑似新冠肺炎人员
+            的肺炎身故责任;
+            2.生效日期:赠险客户满6000人2个工作日
+            或武汉复工后七个自然日次日，二者中较早
+            者;
+            3.确诊感染新冠肺炎导致身故责任保险期间:
+            3个月;
+            4.除确诊感染新冠肺炎导致身故之外保险责任保险期间: 1年。</div>
+    </div>
+
+    <!--<div class="phone-tit">请填写以下订单信息</div>-->
+    <div class="phone-tit"></div>
+
+    <div style="background-color: #fff;border-radius: 4px 4px 4px 4px;padding: 10px 5px;">
+        <table>
+            <!--<tr><td colspan="2"><span style="margin: 0 5% 20px;padding:5px;background-color:#f1eded;display: inline-block;line-height: 20px;font-size: 12px">自新冠肺炎爆发以来，为助力国家打好防疫攻坚战。
+光大集团上下-心，推出了一系利民举措，先期向湖
+北疫区捐款3000万元，向武汉疫情防控医护人员捐
+赠保险保障总保额900亿，充分发挥集团综合金融、
+产融合作优势，以最大力度抗击疫情。随着武汉企业
+复工日期日益临近，光大银行武汉分行联合光大永明
+人寿保险湖北分公司为全省前6000名激活客户免费
+赠送复工保障。</span></td></tr>-->
+            <tr class="tr-border"><td align="left" class="td_left"><span class="money"></span>姓名：</td><td class="td_m"><input type="text" id="comprador"></td></tr>
+            <!--<tr><td><hr/></td></tr>-->
+            <tr class="tr-border"><td align="left" class="td_left"><span class="money"></span>身份证号：</td><td class="td_m"><input type="text" maxlength="18" id="idCard"></td></tr>
+
+            <tr class="tr-border"><td align="left" class="td_left"><span class="money"></span>手机号：</td><td class="td_m"><input type="text" maxlength="11" id="contactNumber"></td></tr>
+            <tr class="tr-border"><td align="left" class="td_left" id="userName">银行卡号：</td><td class="td_m"><input type="text" onkeyup="value=value.replace(/[^\w\.\/]/ig,'')" maxlength="16" placeholder="仅支持光大Ⅱ类电子账户" id="referName" style="width: 70%!important;"/><a href="agreement1.html" style="color: #B01109;font-size: 3vw;float: right;margin-right: 5px" onclick="setStore()">如何申请</a></td></tr>
+        </table>
+        <div class="notice1">*注:仅支持开户行为湖北省内光大银行分支机构的II类电子账户</div>
+    </div>
+    <div class="agree" onclick="pick(this)" id="pickS">
+        <a href="agreement2.html" style="color: white" onclick="setStore()">本人已知晓赠险条款并同意接收光大银行武汉分行赠送的保险。</a>
+        <!--<div class="mui-input-row mui-radio mui-left" style="width: 100%;float: left">
+            <label>本人已知晓赠险条款并同意接收光大银行武汉分行赠送的保险。</label>
+            <input type="radio" onclick="this.value='ok';" name="agree">
+        </div>-->
+        <!--<a href="doc/agreement.html">
+            <span onclick="toAgree()">中国电信协议</span><br>
+        </a>-->
+    </div>
+    <div class="btn-next" onclick="toNext()"></div>
+    <div style="color: white;font-size: 12px" id="pickNum">已经领取<span id="pickNum2"></span>份</div>
+    <div style="text-align: center;color: white;font-size: 12px">理赔专线：95348</div>
+</div>
+<div id="mask"><img style="margin-top:200px" src="images/loading.gif"></div>
+<script type="text/javascript">
+    document.write("<script src='js/common.js?ver=" +Math.round(Math.random()*10000)+ "'><" + "/script>");
+</script>
+<script src="lib/jquery-1.11.2.min.js"></script>
+<script src="lib/jquery.form.js"></script>
+<script src="lib/mui/js/mui.picker.min.js"></script>
+<script src="lib/mui/js/mui.poppicker.js"></script>
+
+<script>
+    var _hmt = _hmt || [];
+    (function($, doc) {
+        $.init();
+        $.ready(function() {
+            var hm = document.createElement("script");
+            //hm.src = "https://hm.baidu.com/hm.js?bc4cd1d32ea9a7064c74e63942dda133";
+            hm.src = "https://hm.baidu.com/hm.js?7d6f03d23a88d2425da7351acfa57988";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+            if(sessionStorage.storePro){
+                var storePro = JSON.parse(sessionStorage.getItem("storePro"));
+                document.getElementById("comprador").value = storePro.name;
+                document.getElementById("idCard").value=storePro.idCard;
+                document.getElementById("contactNumber").value = storePro.phone;
+                document.getElementById("referName").value=storePro.bankCard;
+                storePro.isPick == "Y"? document.getElementById("pickS").classList.add("agree-y"):""
+            }
+            pickNum();
+            //普通示例
+            var userPicker = new $.PopPicker();
+
+            var userResult = doc.getElementById('user');
+            userResult.addEventListener('tap', function(event) {
+                var data = [{text:'中国邮政储蓄银行',value:'1'},{text:'中国电信',value:'2'}];
+                userPicker.setData(data);
+                userPicker.show(function(items) {
+                    userResult.innerText = items[0].text;
+                    userResult.setAttribute('attr',items[0].value);
+                    if(items[0].value=='1'){
+                        doc.getElementById('userName').innerText='网点机构号：';
+                        doc.getElementById('userId').innerText='柜员号：';
+                    }else{
+                        doc.getElementById('userName').innerText='营业厅机构号：';
+                        doc.getElementById('userId').innerText='员工号：';
+                    }
+                    //返回 false 可以阻止选择框的关闭
+                    //return false;
+                });
+            }, false);
+            var proResult1 = doc.getElementById('pro1');
+            var cityResult1 = doc.getElementById('city1');
+            if(sessionStorage.proId=='61'){
+                proResult1.innerText = '陕西';
+                proResult1.setAttribute('attr','61');
+            }else{
+                proResult1.innerText = proName(sessionStorage.proId);
+                proResult1.setAttribute('attr',sessionStorage.proId);
+            }
+            /* proResult1.addEventListener('tap', function(event) {
+                 var data = getPro('',0,1);
+                 userPicker.setData(data);
+                 cityResult1.innerText = '市';
+                 cityResult1.setAttribute('attr','');
+                 userPicker.show(function(items) {
+                     proResult1.innerText = items[0].text;
+                     proResult1.setAttribute('attr',items[0].value);
+                     //返回 false 可以阻止选择框的关闭
+                     //return false;
+                 });
+             }, false);*/
+            cityResult1.addEventListener('tap', function(event) {
+                if(proResult1.getAttribute('attr')==''){
+                    mui.toast("请先选择省")
+                }else{
+                    var data = getPro(proResult1.getAttribute('attr'),1,1);
+                    userPicker.setData(data);
+                    userPicker.show(function(items) {
+                        cityResult1.innerText = items[0].text;
+                        cityResult1.setAttribute('attr',items[0].value);
+                        //返回 false 可以阻止选择框的关闭
+                        //return false;
+                    });
+                }
+
+            }, false);
+            var store = JSON.parse(sessionStorage.getItem("storePro"));
+            document.getElementById("phoneName").innerText = store.phoneName;
+            document.getElementById("phoneName1").innerText = store.brand+'|'+store.color+'|'+store.memory+'G';
+            document.getElementById('deadline').innerText = store.contractPeriod+'个月';
+            document.getElementById('freezeAmount').innerText = store.freezeAmount+'元';
+
+            if(store.phoneState == 'N'){
+                var phoneNumber = '(主)'+store.phoneNumber;//+'<br/>'+'(副)'+store.subPhoneNum;
+            }else{
+                phoneNumber = '(老)'+store.phoneNumber;
+            }
+            document.getElementById('phoneNumber').innerHTML = phoneNumber;
+            document.getElementById('prodOfferName').innerText = store.prodOfferName;
+            if(sessionStorage.back == 0){
+                var city1 = document.getElementById('city1');
+                var crea = document.getElementById('address');
+                var user = document.getElementById('user');
+
+                var storePro = JSON.parse(sessionStorage.getItem("storePro"));
+                document.getElementById("comprador").value = storePro.comprador;
+                document.getElementById("idCard").value=storePro.idCard;
+                document.getElementById("cardAddress").value=storePro.idCardAddress;
+                document.getElementById("contactNumber").value=storePro.contactNumber;
+
+                //$("#img1").attr("src","");
+                document.getElementById("img1").setAttribute("src",httpUrl+"PreOrder/1882?fileName="+storePro.idCard1);
+                document.getElementById("img2").setAttribute("src",httpUrl+"PreOrder/1882?fileName="+storePro.idCard2);
+                document.getElementById("img3").setAttribute("src",httpUrl+"PreOrder/1882?fileName="+storePro.idCard3);
+                document.getElementById("idCard1").value=storePro.idCard1;
+                document.getElementById("idCard2").value=storePro.idCard2;
+                document.getElementById("idCard3").value=storePro.idCard3;
+                document.getElementById("img1").style.display = "block";
+                document.getElementById("img2").style.display = "block";
+                document.getElementById("img3").style.display = "block";
+
+                pro1.innerText = storePro.pro1;
+                pro1.setAttribute('attr',storePro.pro1Name);
+                city1.innerText = storePro.city1;
+                city1.setAttribute('attr',storePro.city1Name);
+
+                crea.value = storePro.crea;
+                user.innerText = storePro.flagName;
+                user.setAttribute('attr',storePro.flag);
+
+                document.getElementById("remark").value=storePro.remark;
+                document.getElementById("referName").value=storePro.referName;
+                document.getElementById("referPhone").value=storePro.referPhone;
+            }
+        });
+    })(mui, document);
+    function back(){
+        sessionStorage.back = 1;
+        var store = JSON.parse(sessionStorage.getItem("storePro"));
+        store.phoneState = 'N';
+        store.phoneNumber = '';
+        sessionStorage.setItem("storePro",JSON.stringify(store));
+        window.location.href='./getPhoneNo.html?ver='+Math.round(Math.random()*100000);
+    }
+    function upImg(form){
+        var filepath = $("#"+form).find("input[name='file']").val();
+        var extStart = filepath.lastIndexOf(".");
+        if(filepath !=""){
+            var ext = filepath.substring(extStart, filepath.length).toUpperCase();
+            if (ext != ".PNG" && ext != ".JPG"&& ext != ".JPEG") {
+                mui.alert("上传资料限于png,jpg格式");
+            }else{
+
+                $("#mask").show();//显示遮罩
+                postImg('PreOrder/1881',form,function(res){
+                    if(form=="form1"){
+                        $("#idCard1").val(res.url);
+                        $("#img1").attr("src",httpUrl+"PreOrder/1882?fileName="+res.url);
+                        $("#img1").show();
+                    }else if(form=="form2"){
+                        $("#idCard2").val(res.url);
+                        $("#img2").attr("src",httpUrl+"PreOrder/1882?fileName="+res.url);
+                        $("#img2").show();
+                    }else if(form=="form3"){
+                        $("#idCard3").val(res.url);
+                        $("#img3").attr("src",httpUrl+"PreOrder/1882?fileName="+res.url);
+                        $("#img3").show();
+                    }
+
+                    $("#mask").hide();//关闭遮罩
+
+
+                });
+
+
+            }
+        }
+
+    }
+    function toNext() {
+        if (valid()) {
+            /*var pro1 = document.getElementById('pro1');
+            var city1 = document.getElementById('city1');
+            var crea = document.getElementById('address');
+
+            var storePro = JSON.parse(sessionStorage.getItem("storePro"));
+            storePro.comprador = trim(document.getElementById("comprador").value);
+            storePro.idCard = trim(document.getElementById("idCard").value);
+            storePro.idCardAddress = trim(document.getElementById("cardAddress").value);
+            storePro.contactNumber = trim(document.getElementById("contactNumber").value);
+
+            storePro.idCard1 = document.getElementById("idCard1").value;
+            storePro.idCard2 = document.getElementById("idCard2").value;
+            storePro.idCard3 = document.getElementById("idCard3").value;
+
+            storePro.pro1 = pro1.innerText;
+            storePro.pro1Name= pro1.getAttribute('attr');
+            storePro.city1 = city1.innerText;
+            storePro.city1Name= city1.getAttribute('attr');
+            storePro.crea = crea.value;
+
+            storePro.address1 = pro1.innerText+city1.innerText+crea.value;
+            storePro.flag = document.getElementById("user").getAttribute('attr');
+            storePro.flagName = document.getElementById("user").innerText;
+            storePro.remark = trim(document.getElementById("remark").value);
+            storePro.referName = trim(document.getElementById("referName").value);
+            storePro.referPhone = trim(document.getElementById("referPhone").value);
+            sessionStorage.setItem("storePro",JSON.stringify(storePro));
+            sessionStorage.back = 1;
+            if(storePro.idCard1==""||storePro.idCard2==""||storePro.idCard3==""){
+                mui.alert("请上传完整身份证图片信息！")
+            }else{
+                window.location.href='./getDetail.html?ver='+Math.round(Math.random()*100000);
+            }*/
+            var storePro = {}
+            storePro.name = trim(document.getElementById("comprador").value);
+            storePro.idCard = trim(document.getElementById("idCard").value);
+            storePro.phone = trim(document.getElementById("contactNumber").value);
+            storePro.bankCard = trim(document.getElementById("referName").value);
+            getData('person/get',storePro,function(rs){
+                mui.alert(rs.msg);
+                document.getElementById("comprador").value = "";
+                document.getElementById("idCard").value = "";
+                document.getElementById("contactNumber").value = "";
+                document.getElementById("referName").value = "";
+                $("#pickS").toggleClass("agree-y");
+                sessionStorage.storePro = ""
+
+            })
+        }
+    }
+    /*TT*/
+    function pick(obj) {
+        $(obj).toggleClass("agree-y")
+    }
+
+    function pickNum() {
+        getData('person/1003',{},function(rs){
+            $("#pickNum2").text(rs.data);
+        })
+    }
+
+    function setStore(){
+        var storePro = {}
+        storePro.name = trim(document.getElementById("comprador").value);
+        storePro.idCard = trim(document.getElementById("idCard").value);
+        storePro.phone = trim(document.getElementById("contactNumber").value);
+        storePro.bankCard = trim(document.getElementById("referName").value);
+        sessionStorage.storePro = JSON.stringify(storePro)
+    }
+</script>
+</body>
+</html>
