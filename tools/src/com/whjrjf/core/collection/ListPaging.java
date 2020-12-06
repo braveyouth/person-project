@@ -4,10 +4,17 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * @author zhangy
+ * 手动分页方法
+ * @author zhangyT
  */
 public class ListPaging {
 
+    /**T
+     * 参考来源:
+     * https://www.cnblogs.com/theRhyme/p/10299144.html
+     * https://blog.csdn.net/qq_33230584/article/details/81537291
+     * https://www.cnblogs.com/zbcat/p/11690520.html
+     */
     public List<List> paging(int cursor, int limit, List list){
         //手动实现分页
         if (cursor <= 0 || cursor > list.size() || limit <= 0) {
