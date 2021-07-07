@@ -1,6 +1,7 @@
 .idea
 */target
 */out
+*/build
 */log
 */.gradle
 logPath_IS_UNDEFINED
