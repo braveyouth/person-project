@@ -10,10 +10,10 @@ import org.springframework.context.annotation.Bean;
  * @Time 2020-12-09 22:33
  */
 @SpringBootApplication
-public class SpringbootRabbitMqMaven {
+public class SpringbootMaven {
 
     public static void main(String[] args) {
-        SpringApplication.run(SpringbootRabbitMqMaven.class,args);
+        SpringApplication.run(SpringbootMaven.class,args);
     }
 
     @Bean
