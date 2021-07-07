@@ -22,7 +22,7 @@ public class TestController {
 
     @RequestMapping("tool")
     public ApiResponse<?> tool(){
-        return new ApiResponse<>(ApiMessage.OK, RegularCheck.isMobile("138715467501"));
+        return new ApiResponse<>(ApiMessage.OK, RegularCheck.isMobile("18900000001"));
     }
 
 }
