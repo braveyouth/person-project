@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/test")
-public class Test {
+public class RabbitMqController {
 
     @Autowired
     private TaskProducer taskProducer;
@@ -30,7 +30,7 @@ public class Test {
     public String growthPlan(){
         GrowthPlanInfo growthPlanInfo = new GrowthPlanInfo();
         growthPlanInfo.setName("成长计划");
-        growthPlanInfo.setYear(2020);
+        growthPlanInfo.setYear(2021);
         taskProducer.sendGrowthPlanTask(growthPlanInfo);
         return "growthplan";
     }

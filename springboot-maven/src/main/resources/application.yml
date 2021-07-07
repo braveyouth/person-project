@@ -1,9 +1,12 @@
 server:
   port: 8080
   servlet:
-    context-path: /rabbitmq
+    context-path: /maven
 
 spring:
   profiles:
     active: local
+  devtools:
+    restart:
+      enabled: true
 
