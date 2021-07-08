@@ -10,3 +10,5 @@ spring:
     restart:
       enabled: true
 
+#docxPath: D://home//person-project//helloworld.docx
+docxPath: /home/person-project/helloworld.docx

@@ -36,6 +36,11 @@
             <artifactId>docx4j</artifactId>
             <version>6.1.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.76</version>
+        </dependency>
     </dependencies>
 
 
