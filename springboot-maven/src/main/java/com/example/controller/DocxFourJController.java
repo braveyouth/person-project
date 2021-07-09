@@ -353,6 +353,42 @@ public class DocxFourJController {
         return "按指定变量替换docx中的内容成功";
     }
 
+    /**
+     * 替换模板里面的表格(循环替换标签)
+     */
+    @GetMapping("replaceTableByLoop")
+    public String replaceTableByLoop(){
+        factory = Context.getWmlObjectFactory();
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+
+            // 构造循环列表的数据
+            ClassFinder find = new ClassFinder(Tbl.class);
+            new TraversalUtil(wordMLPackage.getMainDocumentPart().getContent(), find);
+            // 获取到第一个表格元素
+            Tbl table = (Tbl) find.results.get(0);
+            // 第二行约定为模板，获取到第二行内容
+            Tr dynamicTr = (Tr) table.getContent().get(1);
+            // 获取模板行的xml数据
+            String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
+
+            List<Map<String, Object>> dataList = getDataList();
+            for (Map<String, Object> dataMap : dataList) {
+                Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);// 填充模板行数据
+                table.getContent().add(newTr);
+            }
+
+            // 删除模板行的占位行
+            table.getContent().remove(1);
+
+            Docx4J.save(wordMLPackage, new File("/home/person-project/helloworld_1.docx"));
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "替换模板里面的表格成功";
+    }
+
 
     /**
      * 下载
@@ -498,6 +534,17 @@ public class DocxFourJController {
         return result;
     }
 
+    private static List<Map<String, Object>> getDataList() {
+        List list = new ArrayList();
+        for (int i = 0; i < 3; i++) {
+            Map map = new HashMap();
+            map.put("name" + i, "name" + i);
+            map.put("sex" + i, "sex" + i);
+            map.put("age" + i, "age" + i);
+            list.add(map);
+        }
+        return list;
+    }
 
 
 }
