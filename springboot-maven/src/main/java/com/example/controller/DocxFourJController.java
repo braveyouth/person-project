@@ -109,9 +109,10 @@ public class DocxFourJController {
      */
     @GetMapping("/wordInsertImage")
     public String wordInsertImage() {
-        File file = new File(picPath);
+        File file = null;
         try {
             wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            file = new File(picPath);
             byte[] bytes = DocImageHandler.convertImageToByteArray(file);
             DocImageHandler.addImageToPackage(wordMLPackage, bytes);
             wordMLPackage.save(new File(docxPath));

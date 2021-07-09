@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.wml.ObjectFactory;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
@@ -30,7 +31,7 @@ public class DocImageHandler {
 
         int docPrId = 1;
         int cNvPrId = 2;
-        org.docx4j.dml.wordprocessingDrawing.Inline inline = imagePart.createImageInline("Filename hint",
+        Inline inline = imagePart.createImageInline("Filename hint",
                 "Alternative text", docPrId, cNvPrId, false);
 
         P paragraph = addInlineImageToParagraph(inline);
@@ -44,7 +45,7 @@ public class DocImageHandler {
      * @param inline
      * @return
      */
-    public static P addInlineImageToParagraph(org.docx4j.dml.wordprocessingDrawing.Inline inline) {
+    public static P addInlineImageToParagraph(Inline inline) {
         // 添加内联对象到一个段落中
         ObjectFactory factory = new ObjectFactory();
         P paragraph = factory.createP();
@@ -57,10 +58,10 @@ public class DocImageHandler {
     }
 
     /**
-     * 将图片转换为字节数组
+     * 将图片从文件对象转换为字节数组
      *
-     * @param file 文件流
-     * @return
+     * @param file 将要转换的文件
+     * @return 包含图片字节数据的字节数组
      * @throws FileNotFoundException
      * @throws IOException
      */
