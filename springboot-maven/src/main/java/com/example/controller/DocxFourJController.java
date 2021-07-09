@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.time.LocalDate;
@@ -39,11 +41,11 @@ public class DocxFourJController {
 
     @Value("${docxPath}")
     private String docxPath;
+    @Value("${picPath}")
+    private String picPath;
 
     /**
-     * 来源：https://blog.csdn.net/chenhailonghp/article/details/96645550
-     *
-     * 基础创建
+     * 基础创建:创建一个新的docx文档
      * 获取文档可操作对象
      */
     @GetMapping("/createDocx")
@@ -53,6 +55,7 @@ public class DocxFourJController {
             try {
                 wordMLPackage =  WordprocessingMLPackage.createPackage();
                 wordMLPackage.save(new File(docxPath));
+//                Docx4J.save(wordMLPackage, new File(docxPath));
             } catch (InvalidFormatException e) {
                 logger.error(e.getMessage());
             }catch (Docx4JException e){
@@ -68,24 +71,44 @@ public class DocxFourJController {
      * 先清空,再生成,防重复
      */
     @GetMapping("/addParagraph")
-    public void addParagraph() {
+    public String addParagraph() {
         WordprocessingMLPackage wordprocessingMLPackage = null;
         try {
             //先加载word文档
             wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
-//            Docx4J.load(new File(docxPath));
+//            wordprocessingMLPackage = Docx4J.load(new File(docxPath));
 
             //增加内容
             wordprocessingMLPackage.getMainDocumentPart().addParagraphOfText("你好!");
             wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Title", "这是标题!");
             wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subtitle", " 这是二级标题!");
 
-//            wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subject", "试一试");
+            wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subject", "试一试");
             //保存文档
             wordprocessingMLPackage.save(new File(docxPath));
         } catch (Docx4JException e) {
             logger.error("addParagraph to docx error: Docx4JException", e);
         }
+        return "追加文档内容成功";
+    }
+
+    /**
+     * 插入图片
+     */
+    @GetMapping("/wordInsertImage")
+    public String wordInsertImage() {
+        WordprocessingMLPackage wordprocessingMLPackage = null;
+        File file = new File(picPath);
+        try {
+            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            byte[] bytes = DocImageHandler.convertImageToByteArray(file);
+            DocImageHandler.addImageToPackage(wordprocessingMLPackage, bytes);
+            wordprocessingMLPackage.save(new File(docxPath));
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+
+        return "插入图片成功";
     }
 
     /**
@@ -115,12 +138,12 @@ public class DocxFourJController {
     }
 
     /**
-     * docx转 html文件
+     * docx转html文件
      * 样式表可以自行修改
      * 转xls,再转html
      */
     @GetMapping("/wordToHtml")
-    public void wordToHtml() {
+    public String wordToHtml() {
         boolean nestLists = true;
         boolean save = true;
         WordprocessingMLPackage wordprocessingMLPackage = null;
@@ -166,39 +189,30 @@ public class DocxFourJController {
         if (wordprocessingMLPackage.getMainDocumentPart().getFontTablePart() != null) {
             wordprocessingMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
         }
-        html = null;
-        wordprocessingMLPackage = null;
+        return "docx转html文件成功";
     }
 
     /**
-     * 插入图片
+     * docx转换为pdf
      */
-    @GetMapping("/wordInsertImage")
-    public void wordInsertImage() {
-        WordprocessingMLPackage wordprocessingMLPackage = null;
+    @GetMapping("/wordToPdf")
+    public String wordToPdf() throws FileNotFoundException {
+        WordprocessingMLPackage wordMLPackage = null;
         try {
-            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage
+                    .load(new File(docxPath));
+            Docx4J.toPDF(wordMLPackage, new FileOutputStream(new File(docxPath + ".pdf")));
         } catch (Docx4JException e) {
             logger.error(e.getMessage());
         }
-        File file = new File("/home/person-project/avatar.png");
-        try {
-            byte[] bytes = DocImageHandler.convertImageToByteArray(file);
-            DocImageHandler.addImageToPackage(wordprocessingMLPackage, bytes);
-            wordprocessingMLPackage.save(new File(docxPath));
-        } catch (FileNotFoundException e) {
-            logger.error(e.getMessage());
-        } catch (IOException e) {
-            logger.error(e.getMessage());
-        } catch (Exception e) {
-            logger.error(e.getMessage());
-        }
+        return "docx转换为pdf成功";
     }
+
 
 
 
     @GetMapping("downloadWord")
-    public byte[] downloadWord() throws Docx4JException, JAXBException, FileNotFoundException {
+    public void downloadWord(HttpServletResponse response) throws Docx4JException, JAXBException, FileNotFoundException {
         //模板文件路径
 //        String path = this.getClass().getClassLoader().getResource("D://template//test.docx").getPath();
         String path = docxPath;
@@ -230,13 +244,31 @@ public class DocxFourJController {
         m.put("active", "游泳");
 
         //处理好数据后就是超级简单的调用
-        return Docx4jUtil.of(path)
+        byte[] bytes = Docx4jUtil.of(path)
                 .addParam("title", "测试文档标题")
                 .addParam("user", "测试人")
                 .addParams(m)
                 .addTable("name", 2, list)
 //                .addImg("img", img)
                 .get();
+
+        ServletOutputStream outputStream = null;
+        try {
+            outputStream = response.getOutputStream();
+            outputStream.flush();
+            outputStream.write(bytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            if(outputStream != null){
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
     }
 
 

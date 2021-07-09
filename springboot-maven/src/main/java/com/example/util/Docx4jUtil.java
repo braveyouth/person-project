@@ -131,7 +131,7 @@ public class Docx4jUtil {
         }
 
         /**
-         * 通过站位符确定加载图片的位置,图片的位置为表格
+         * 通过占位符确定加载图片的位置,图片的位置为表格
          *
          * @param placeholder  占位符
          * @param decodeBuffer 图片的字节流
@@ -145,7 +145,7 @@ public class Docx4jUtil {
         }
 
         /**
-         * 通过站位符确定加载图片的位置,图片的位置为表格
+         * 通过占位符确定加载图片的位置,图片的位置为表格
          *
          * @param placeholder  占位符
          * @param decodeBuffer 图片的字节流
