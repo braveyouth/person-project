@@ -7,10 +7,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.convert.out.HTMLSettings;
+import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.wml.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,10 +20,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.JAXBException;
 import java.io.*;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,10 +43,17 @@ public class DocxFourJController {
 
     private static Logger logger = LoggerFactory.getLogger(DocxFourJController.class);
 
+    private static WordprocessingMLPackage wordMLPackage;
+    private static ObjectFactory  factory;
+
     @Value("${docxPath}")
     private String docxPath;
     @Value("${picPath}")
     private String picPath;
+    @PostConstruct
+    public void init(){
+        logger.info("docx4j服务,{}", true);
+    }
 
     /**
      * 基础创建:创建一个新的docx文档
@@ -50,7 +61,6 @@ public class DocxFourJController {
      */
     @GetMapping("/createDocx")
     public String createDocx(){
-        WordprocessingMLPackage wordMLPackage = null;
         if(!StringUtils.isEmpty(docxPath)) {
             try {
                 wordMLPackage =  WordprocessingMLPackage.createPackage();
@@ -72,20 +82,19 @@ public class DocxFourJController {
      */
     @GetMapping("/addParagraph")
     public String addParagraph() {
-        WordprocessingMLPackage wordprocessingMLPackage = null;
         try {
             //先加载word文档
-            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
-//            wordprocessingMLPackage = Docx4J.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+//            wordMLPackage = Docx4J.load(new File(docxPath));
 
             //增加内容
-            wordprocessingMLPackage.getMainDocumentPart().addParagraphOfText("你好!");
-            wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Title", "这是标题!");
-            wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subtitle", " 这是二级标题!");
+            wordMLPackage.getMainDocumentPart().addParagraphOfText("你好!");
+            wordMLPackage.getMainDocumentPart().addStyledParagraphOfText("Title", "这是标题!");
+            wordMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subtitle", " 这是二级标题!");
 
-            wordprocessingMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subject", "试一试");
+            wordMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subject", "试一试");
             //保存文档
-            wordprocessingMLPackage.save(new File(docxPath));
+            wordMLPackage.save(new File(docxPath));
         } catch (Docx4JException e) {
             logger.error("addParagraph to docx error: Docx4JException", e);
         }
@@ -97,19 +106,73 @@ public class DocxFourJController {
      */
     @GetMapping("/wordInsertImage")
     public String wordInsertImage() {
-        WordprocessingMLPackage wordprocessingMLPackage = null;
         File file = new File(picPath);
         try {
-            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
             byte[] bytes = DocImageHandler.convertImageToByteArray(file);
-            DocImageHandler.addImageToPackage(wordprocessingMLPackage, bytes);
-            wordprocessingMLPackage.save(new File(docxPath));
+            DocImageHandler.addImageToPackage(wordMLPackage, bytes);
+            wordMLPackage.save(new File(docxPath));
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
-
         return "插入图片成功";
     }
+
+    /**
+     * 创建表格
+     */
+    @GetMapping("addTable")
+    public String addTable() {
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
+
+            factory = Context.getWmlObjectFactory();
+            // 1 创建表格元素
+            Tbl table = factory.createTbl();
+            //2 显示表格的边框
+            addBorders(table);
+
+            //3 添加表格内容(创建行和列)
+            for (int i = 0; i < 3; i++) {
+                Tr tr = factory.createTr();
+                for (int j = 0; j < 3; j++) {
+                    Tc tc = factory.createTc();
+
+                    //3.1
+//                    P p = mainDocumentPart.createParagraphOfText("---row" + i + "---column" + j + "---");
+
+                    //3.2 第二种创建P并设置样式的方法
+                    P p = factory.createP();
+                    R r = factory.createR();
+                    Text text = factory.createText();
+                    text.setValue("---row" + i + "---column" + j + "---");
+                    r.getContent().add(text);
+                    p.getContent().add(r);
+                    //3.2.1 通过R设置字体加粗等属性
+                    setRStyle(r);
+                    //3.2.2 设置列宽
+                    if (j == 1) {
+                        setCellWidth(tc, 1250);
+                    } else {
+                        setCellWidth(tc, 2500);
+                    }
+
+                    tc.getContent().add(p);
+                    tr.getContent().add(tc);
+                }
+                table.getContent().add(tr);
+            }
+
+            //4 将新增表格加到主要内容中
+            mainDocumentPart.addObject(table);
+            wordMLPackage.save(new File(docxPath));
+        } catch (Docx4JException e) {
+            logger.error("createDocx error: Docx4JException", e);
+        }
+        return "创建表格成功";
+    }
+
 
     /**
      * 读取docx文件(这里不支持doc文件)
@@ -118,13 +181,12 @@ public class DocxFourJController {
     @GetMapping("readParagraph")
     public String readParagraph() {
         List<Object> list = new ArrayList<>();
-        WordprocessingMLPackage wordprocessingMLPackage = null;
         try {
-            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
 
-            String contentType = wordprocessingMLPackage.getContentType();
+            String contentType = wordMLPackage.getContentType();
             logger.info("contentType:"+contentType);
-            MainDocumentPart part = wordprocessingMLPackage.getMainDocumentPart();
+            MainDocumentPart part = wordMLPackage.getMainDocumentPart();
             logger.info("content -> body -> "+part.getContents().getBody().toString());
             list = part.getContent();
             for(Object o :list) {
@@ -146,9 +208,8 @@ public class DocxFourJController {
     public String wordToHtml() {
         boolean nestLists = true;
         boolean save = true;
-        WordprocessingMLPackage wordprocessingMLPackage = null;
         try {
-            wordprocessingMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
         } catch (Docx4JException e) {
            logger.error(e.getMessage());
         }
@@ -157,7 +218,7 @@ public class DocxFourJController {
         //设置图片的目录地址
         html.setImageDirPath(docxPath + "_files");
         html.setImageTargetUri(docxPath.substring(docxPath.lastIndexOf("/") + 1 ) + "_files");
-        html.setWmlPackage(wordprocessingMLPackage);
+        html.setWmlPackage(wordMLPackage);
         String userCSS = null;
         if (nestLists) {
             userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  table, caption, tbody, tfoot, thead, tr, th, td "
@@ -186,8 +247,8 @@ public class DocxFourJController {
         } else {
             System.out.println(((ByteArrayOutputStream) os).toString());
         }
-        if (wordprocessingMLPackage.getMainDocumentPart().getFontTablePart() != null) {
-            wordprocessingMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
+        if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
+            wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
         }
         return "docx转html文件成功";
     }
@@ -197,7 +258,6 @@ public class DocxFourJController {
      */
     @GetMapping("/wordToPdf")
     public String wordToPdf() throws FileNotFoundException {
-        WordprocessingMLPackage wordMLPackage = null;
         try {
             wordMLPackage = WordprocessingMLPackage
                     .load(new File(docxPath));
@@ -270,6 +330,72 @@ public class DocxFourJController {
         }
 
     }
+
+    /**
+     * 设置边框样式
+     * 需要设置表格边框的单元格
+     * @param table
+     */
+    private static void addBorders(Tbl table) {
+        // 必须设置一个TblPr，否则最后会报空指针异常
+        table.setTblPr(new TblPr());
+
+        // 创建一个默认颜色（黑色）、粗细尺寸为4、间距为0的单线边框的边框组件（Border component）
+        CTBorder border = new CTBorder();
+        border.setColor("auto");
+        border.setSz(new BigInteger("4"));
+        border.setSpace(new BigInteger("0"));
+        border.setVal(STBorder.SINGLE);
+
+        // 边框组件被应用到表格的四周以及表格内部水平和垂直的边框
+        TblBorders borders = new TblBorders();
+        borders.setBottom(border);
+        borders.setLeft(border);
+        borders.setRight(border);
+        borders.setTop(border);
+        borders.setInsideH(border);
+        borders.setInsideV(border);
+
+        // 获取其内部的TblPr属性设置属性,边框应用到表格
+        table.getTblPr().setTblBorders(borders);
+    }
+
+    /**
+     * 通过设置R设置表格中属性字体加粗，大小为25
+     * @param
+     */
+    private static void setRStyle(R r) {
+        // 1.创建一个RPr
+        RPr rpr = new RPr();
+
+        // 2.设置RPr
+        // 2.1设置字体大小
+        HpsMeasure size = new HpsMeasure();
+        size.setVal(new BigInteger("25"));
+        rpr.setSz(size);
+        // 2.2设置加粗
+        BooleanDefaultTrue bold = new BooleanDefaultTrue();
+        bold.setVal(true);
+        rpr.setB(bold);
+
+        // 3.将RPr设置为R的属性
+        r.setRPr(rpr);
+    }
+
+    /**
+     * 设置列宽
+     * @param tc
+     * @param width
+     */
+    private static void setCellWidth(Tc tc, int width) {
+        TcPr tableCellProperties = new TcPr();
+        TblWidth tableWidth = new TblWidth();
+        tableWidth.setW(BigInteger.valueOf(width));
+        tableCellProperties.setTcW(tableWidth);
+
+        tc.setTcPr(tableCellProperties);
+    }
+
 
 
 }
