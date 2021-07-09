@@ -7,11 +7,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.TraversalUtil;
+import org.docx4j.XmlUtils;
 import org.docx4j.convert.out.HTMLSettings;
 import org.docx4j.finders.ClassFinder;
 import org.docx4j.jaxb.Context;
+import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
+import org.docx4j.openpackaging.io.SaveToZipFile;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
 import org.docx4j.wml.*;
@@ -30,10 +33,7 @@ import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.math.BigInteger;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author zhangy
@@ -309,9 +309,55 @@ public class DocxFourJController {
         return "docx转换为pdf成功";
     }
 
+    /**
+     * 按指定变量替换docx中的内容  ${var}替换
+     */
+    @GetMapping("replaceTableByVariable")
+    public String replaceTableByVariable(){
+        factory = Context.getWmlObjectFactory();
+        boolean save = true;
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            VariablePrepare.prepare(wordMLPackage);
+            MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+
+            //需要替换的map
+            HashMap<String, String> mappings = new HashMap<String, String>();
+            mappings.put("name", "张三");
+            mappings.put("age", "25");
+            mappings.put("sex", "男");
+
+            long start = System.currentTimeMillis();
+            documentPart.variableReplace(mappings);
+//            // unmarshallFromTemplate requires string input
+//            String xml = XmlUtils.marshaltoString(documentPart.getJaxbElement(), true);
+//            // Do it...
+//            Object obj = XmlUtils.unmarshallFromTemplate(xml, mappings);
+//            // Inject result into docx
+//            documentPart.setJaxbElement((Document) obj);
+            long end = System.currentTimeMillis();
+            long total = end - start;
+            System.out.println("Time: " + total);
+
+            // Save it
+            if (save) {
+                SaveToZipFile saver = new SaveToZipFile(wordMLPackage);
+                saver.save("/home/person-project/helloworld_1.docx");
+            } else {
+                System.out.println(XmlUtils.marshaltoString(documentPart.getJaxbElement(), true, true));
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "按指定变量替换docx中的内容成功";
+    }
 
 
-
+    /**
+     * 下载
+     * @param response
+     */
     @GetMapping("downloadWord")
     public void downloadWord(HttpServletResponse response) throws Docx4JException, JAXBException, FileNotFoundException {
         //模板文件路径
