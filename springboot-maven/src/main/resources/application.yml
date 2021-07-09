@@ -9,6 +9,9 @@ spring:
   devtools:
     restart:
       enabled: true
+  mvc:
+    servlet:
+      load-on-startup: 1
 
 docxPath: /home/person-project/helloworld.docx
 picPath: /home/person-project/avatar.png

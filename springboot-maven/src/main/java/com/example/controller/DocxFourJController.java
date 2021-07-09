@@ -6,7 +6,9 @@ import com.example.util.Docx4jUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
 import org.docx4j.Docx4jProperties;
+import org.docx4j.TraversalUtil;
 import org.docx4j.convert.out.HTMLSettings;
+import org.docx4j.finders.ClassFinder;
 import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.PostConstruct;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.math.BigInteger;
@@ -171,6 +174,43 @@ public class DocxFourJController {
             logger.error("createDocx error: Docx4JException", e);
         }
         return "创建表格成功";
+    }
+
+    /**
+     * 读取表格内容
+     */
+    @GetMapping("readTable")
+    public String readTable(){
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+
+            // 1. ClassFinder构造类型查询器获取指定元素
+            ClassFinder find = new ClassFinder(Tbl.class);
+            new TraversalUtil(documentPart.getContent(), find);
+
+            // 获取到第一个表格元素
+            Tbl table = (Tbl) find.results.get(0);
+            List<Object> trs = table.getContent();
+            logger.info("{}", trs);
+
+            System.out.println("=====================");
+
+            for (Object obj : trs) {
+                Tr tr = (Tr) obj;// 获取到tr
+                List<Object> content = tr.getContent();
+                logger.info("{}", content);
+                List<Object> objList = getAllElementFromObject(tr, Tc.class);// 获取所有的Tc元素
+                for (Object obj1 : objList) {
+                    Tc tc = (Tc) obj1;
+                    logger.info("{}", tc.getContent());
+                }
+                System.out.println("===============");
+            }
+        } catch (Docx4JException e) {
+            logger.error(e.getMessage());
+        }
+        return "读取表格内容";
     }
 
 
@@ -394,6 +434,21 @@ public class DocxFourJController {
         tableCellProperties.setTcW(tableWidth);
 
         tc.setTcPr(tableCellProperties);
+    }
+
+    private static List<Object> getAllElementFromObject(Object obj, Class<?> toSearch) {
+        List<Object> result = new ArrayList<Object>();
+        if (obj instanceof JAXBElement)
+            obj = ((JAXBElement<?>) obj).getValue();
+        if (obj.getClass().equals(toSearch))
+            result.add(obj);
+        else if (obj instanceof ContentAccessor) {
+            List<?> children = ((ContentAccessor) obj).getContent();
+            for (Object child : children) {
+                result.addAll(getAllElementFromObject(child, toSearch));
+            }
+        }
+        return result;
     }
 
 
