@@ -57,6 +57,10 @@ public class DocxFourJController {
     private String docxPath;
     @Value("${picPath}")
     private String picPath;
+    @Value("${templatePath}")
+    private String templatePath;
+    @Value("${outPath}")
+    private String outPath;
     @PostConstruct
     public void init(){
         logger.info("docx4j服务,{}", true);
@@ -372,8 +376,8 @@ public class DocxFourJController {
             new TraversalUtil(wordMLPackage.getMainDocumentPart().getContent(), find);
             // 获取到第一个表格元素
             Tbl table = (Tbl) find.results.get(0);
-            // 第二行约定为模板，获取到第二行内容
-            Tr dynamicTr = (Tr) table.getContent().get(1);
+            // 第一行约定为模板，获取到第一行内容
+            Tr dynamicTr = (Tr) table.getContent().get(0);
             // 获取模板行的xml数据
             String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
 
@@ -384,7 +388,7 @@ public class DocxFourJController {
             }
 
             // 删除模板行的占位行
-            table.getContent().remove(1);
+            table.getContent().remove(0);
 
             Docx4J.save(wordMLPackage, new File("/home/person-project/helloworld_1.docx"));
         } catch (Exception e) {
@@ -414,8 +418,12 @@ public class DocxFourJController {
             for (CTBookmark bm : rt.getStarts()) {
                 logger.info("标签名称:" + bm.getName());
                 // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
+//                List<Map<String, Object>> dataList = getDataList();
+//                for (Map<String, Object> map : dataList) {
+//                    replaceText(bm, map);
+//                }
                 if (bm.getName().equals("name0")) {
-                    replaceText(bm, "lihua");
+                    replaceText(bm, "zhangsan");
                 }
                 if (bm.getName().equals("pic")) {
                     addImage(wordMLPackage, bm, picPath);
@@ -427,6 +435,66 @@ public class DocxFourJController {
             logger.error(e.getMessage());
         }
         return "按书签替换内容成功";
+    }
+
+    /**
+     * 按占位符替换内容(替换变量、表格、图片等格式数据)
+     * 注意：1 占位符在word转换为xml被分离问题：
+     * 1.1 原因：
+     * 1.1.1 打开word模板，单词底下有红线标注，这个就是word文档的单词校验，一般组装的标识符不符合单词校验规则，在转换的过程中，会单独分开（因为底下有标注），所以就会产生占位符被分开的情况。
+     * 1.2 解决方案：
+     * 1.2.1 docx中先不写变量，将docx另存为xml，然后用docx打开这个xml，这时候加变量就好了，${variable}就不会被分离了，之后再另存为docx即可
+     * 1.2.2 先建一个txt文本，将${variable}编辑到文本，然后复制到docx即可(推荐)
+     */
+    @GetMapping("/placeholderTable")
+    public String placeholderTable(){
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(templatePath));
+            Map<String, String> mappings = new HashMap<String, String>();
+            //构造非循环格子的表格数据
+            mappings.put("name", "马参军");
+            mappings.put("sex", "男");
+            mappings.put("skill", "散谣：三人成虎事多有");
+
+            //构造循环列表的数据
+            ClassFinder find = new ClassFinder(Tbl.class);
+            new TraversalUtil(wordMLPackage.getMainDocumentPart().getContent(), find);
+            Tbl table = (Tbl) find.results.get(1);
+            Tr dynamicTr = (Tr) table.getContent().get(1);//第二行约定为模板
+            String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);//获取模板行的xml数据
+            List<Map<String , Object>> dataList = dataList();
+            for (Map<String, Object> dataMap : dataList) {
+                Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);//填充模板行数据
+                table.getContent().add(newTr);
+            }
+            //删除模板行的占位行
+            table.getContent().remove(1);
+            wordMLPackage.getMainDocumentPart().variableReplace(mappings);//设置全局的变量替换
+            Docx4J.save(wordMLPackage, new File(outPath));
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "按占位符替换内容成功";
+    }
+
+
+
+    //构造循环数据
+    private static List<Map<String , Object>> dataList() {
+        List<Map<String , Object>> dataList = new ArrayList<Map<String , Object>>();
+        Map<String , Object> m1 = new HashMap<String , Object>();
+        m1.put("item.number", "1");m1.put("item.name", "关银萍");
+        m1.put("item.sex", "女");m1.put("item.skill", "来吧，青龙偃月刀");
+        dataList.add(m1);
+        Map<String , Object> m2 = new HashMap<String , Object>();
+        m2.put("item.number", "2");m2.put("item.name", "马云禄");
+        m2.put("item.sex", "女");m2.put("item.skill", "啥玩意，手里方片摸牌，占位占位看到换行的样式效果，占位占位看到换行的样式效果");
+        dataList.add(m2);
+        Map<String , Object> m3 = new HashMap<String , Object>();
+        m3.put("item.number", "3");m3.put("item.name", "张星彩");
+        m3.put("item.sex", "女");m3.put("item.skill", "长缨在手，擦擦擦擦");
+        dataList.add(m3);
+        return dataList;
     }
 
 
@@ -578,9 +646,9 @@ public class DocxFourJController {
         List list = new ArrayList();
         for (int i = 0; i < 3; i++) {
             Map map = new HashMap();
-            map.put("name" + i, "name" + i);
-            map.put("sex" + i, "sex" + i);
-            map.put("age" + i, "age" + i);
+            map.put("name", "name" + i);
+            map.put("sex", "sex" + i);
+            map.put("age", "age" + i);
             list.add(map);
         }
         return list;

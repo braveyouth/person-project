@@ -15,3 +15,5 @@ spring:
 
 docxPath: /home/person-project/helloworld.docx
 picPath: /home/person-project/avatar.png
+templatePath: /home/person-project/template.docx
+outPath: /home/person-project/out.docx
