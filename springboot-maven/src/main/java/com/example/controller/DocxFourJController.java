@@ -9,14 +9,18 @@ import org.docx4j.Docx4jProperties;
 import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.out.HTMLSettings;
+import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.finders.ClassFinder;
+import org.docx4j.finders.RangeFinder;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.io.SaveToZipFile;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.org.apache.poi.util.IOUtils;
 import org.docx4j.wml.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -389,6 +393,42 @@ public class DocxFourJController {
         return "替换模板里面的表格成功";
     }
 
+    /**
+     * 按书签替换内容(替换变量、表格、图片等格式数据)
+     */
+    @GetMapping("/booknameReplaceVar")
+    public String booknameReplaceVar(){
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
+            factory = Context.getWmlObjectFactory();
+
+            Document wmlDoc = (Document) mainDocumentPart.getJaxbElement();
+            Body body = wmlDoc.getBody();
+            // 提取正文中所有段落
+            List<Object> paragraphs = body.getContent();
+            // 提取书签并创建书签的游标
+            RangeFinder rt = new RangeFinder("CTBookmark", "CTMarkupRange");
+            new TraversalUtil(paragraphs, rt);
+            // 遍历书签
+            for (CTBookmark bm : rt.getStarts()) {
+                logger.info("标签名称:" + bm.getName());
+                // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
+                if (bm.getName().equals("name0")) {
+                    replaceText(bm, "lihua");
+                }
+                if (bm.getName().equals("pic")) {
+                    addImage(wordMLPackage, bm, picPath);
+                }
+            }
+            Docx4J.save(wordMLPackage, new File("/home/person-project/helloworld_1.docx"));
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "按书签替换内容成功";
+    }
+
 
     /**
      * 下载
@@ -546,5 +586,114 @@ public class DocxFourJController {
         return list;
     }
 
+    /**
+     * 在标签处插入内容
+     *
+     * @param bm
+     * @param object
+     * @throws Exception
+     */
+    public static void replaceText(CTBookmark bm, Object object) throws Exception {
+        if (object == null) {
+            return;
+        }
+        // do we have data for this one?
+        if (bm.getName() == null)
+            return;
+        String value = object.toString();
+        try {
+            // Can't just remove the object from the parent,
+            // since in the parent, it may be wrapped in a JAXBElement
+            List<Object> theList = null;
+            ParaRPr rpr = null;
+            if (bm.getParent() instanceof P) {
+                PPr pprTemp = ((P) (bm.getParent())).getPPr();
+                if (pprTemp == null) {
+                    rpr = null;
+                } else {
+                    rpr = ((P) (bm.getParent())).getPPr().getRPr();
+                }
+                theList = ((ContentAccessor) (bm.getParent())).getContent();
+            } else {
+                return;
+            }
+            int rangeStart = -1;
+            int rangeEnd = -1;
+            int i = 0;
+            for (Object ox : theList) {
+                Object listEntry = XmlUtils.unwrap(ox);
+                if (listEntry.equals(bm)) {
 
+                    if (((CTBookmark) listEntry).getName() != null) {
+
+                        rangeStart = i + 1;
+
+                    }
+                } else if (listEntry instanceof CTMarkupRange) {
+                    if (((CTMarkupRange) listEntry).getId().equals(bm.getId())) {
+                        rangeEnd = i - 1;
+
+                        break;
+                    }
+                }
+                i++;
+            }
+            int x = i - 1;
+            // if (rangeStart > 0 && x >= rangeStart) {
+            // Delete the bookmark range
+            for (int j = x; j >= rangeStart; j--) {
+                theList.remove(j);
+            }
+            // now add a run
+            R run = factory.createR();
+            Text t = factory.createText();
+            // if (rpr != null)
+            // run.setRPr(paraRPr2RPr(rpr));
+            t.setValue(value);
+            run.getContent().add(t);
+            // t.setValue(value);
+
+            theList.add(rangeStart, run);
+            // }
+        } catch (ClassCastException e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 插入图片
+     *
+     * @param wPackage
+     * @param bm
+     * @param file
+     */
+    public static void addImage(WordprocessingMLPackage wPackage, CTBookmark bm, String file) {
+        logger.info("addImage :->{},{},{}", wPackage, bm,file);
+        try {
+            // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
+            // 获取该书签的父级段落
+            P p = (P) (bm.getParent());
+            // R对象是匿名的复杂类型，然而我并不知道具体啥意思，估计这个要好好去看看ooxml才知道
+            R run = factory.createR();
+            // 读入图片并转化为字节数组，因为docx4j只能字节数组的方式插入图片
+            byte[] bytes = IOUtils.toByteArray(new FileInputStream(file));
+
+            // InputStream is = new FileInputStream;
+            // byte[] bytes = IOUtils.toByteArray(inputStream);
+            // byte[] bytes = FileUtil.getByteFormBase64DataByImage("");
+            // 开始创建一个行内图片
+            BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wPackage, bytes);
+            // createImageInline函数的前四个参数我都没有找到具体啥意思，，，，
+            // 最有一个是限制图片的宽度，缩放的依据
+            Inline inline = imagePart.createImageInline(null, null, 0, 1, false, 0);
+            // 获取该书签的父级段落
+            // drawing理解为画布？
+            Drawing drawing = factory.createDrawing();
+            drawing.getAnchorOrInline().add(inline);
+            run.getContent().add(drawing);
+            p.getContent().add(run);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
 }
