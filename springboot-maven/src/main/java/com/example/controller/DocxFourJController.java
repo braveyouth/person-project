@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.example.dto.CompositeDocxReq;
 import com.example.util.DocImageHandler;
 import com.example.util.Docx4jUtil;
-import com.example.util.Docx4jUtils;
+import com.example.util.Docx4jUtilBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
@@ -20,7 +20,6 @@ import org.docx4j.finders.RangeFinder;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
-import org.docx4j.openpackaging.io.SaveToZipFile;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
@@ -39,7 +38,6 @@ import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.URLEncoder;
-import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -342,7 +340,7 @@ public class DocxFourJController {
             wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             VariablePrepare.prepare(wordMLPackage);
             MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
-            Docx4jUtils.cleanDocumentPart(documentPart);
+            Docx4jUtil.cleanDocumentPart(documentPart);
 
             //需要替换的map
             HashMap<String, String> mappings = new HashMap<String, String>();
@@ -399,7 +397,7 @@ public class DocxFourJController {
         try {
             wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
-            Docx4jUtils.cleanDocumentPart(documentPart);
+            Docx4jUtil.cleanDocumentPart(documentPart);
 
             // 构造循环列表的数据
             ClassFinder find = new ClassFinder(Tbl.class);
@@ -480,7 +478,7 @@ public class DocxFourJController {
     public String placeholderTable(){
         try {
             wordMLPackage = WordprocessingMLPackage.load(new File(template02Path));
-            Docx4jUtils.cleanDocumentPart(wordMLPackage.getMainDocumentPart());
+            Docx4jUtil.cleanDocumentPart(wordMLPackage.getMainDocumentPart());
             Map<String, String> mappings = new HashMap<String, String>();
             //构造非循环格子的表格数据
             mappings.put("name", "马参军");
@@ -604,7 +602,7 @@ public class DocxFourJController {
         m.put("active", "游泳");
 
         //处理好数据后就是超级简单的调用
-        byte[] bytes = Docx4jUtil.of(template02Path)
+        byte[] bytes = Docx4jUtilBuilder.of(template02Path)
 //                .addParam("title", "测试文档标题")
 //                .addParam("user", "测试人")
 //                .addParams(m)
@@ -644,7 +642,7 @@ public class DocxFourJController {
 //            mainDocumentPart = wordMLPackage.getMainDocumentPart();
 //            factory = Context.getWmlObjectFactory();
 //            //清扫docx4j模板变量字符
-//            Docx4jUtils.cleanDocumentPart(mainDocumentPart);
+//            Docx4jUtil.cleanDocumentPart(mainDocumentPart);
 
             // //构造非循环列表的变量数据
 //            Map<String, String> mappings = new HashMap<String, String>();
@@ -697,13 +695,13 @@ public class DocxFourJController {
 //            Docx4J.save(wordMLPackage, new File(template02outPath));
 
             //工具类下载
-//            Docx4jUtils.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
+//            Docx4jUtil.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
 //                    mappings,
 //                    dataList,
 //                    picList,
 //                    response,
 //                    "export");
-            Docx4jUtils.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
+            Docx4jUtil.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
                     compositeDocxReq.getMappings(),
                     compositeDocxReq.getDataList(),
                     compositeDocxReq.getPicList(),

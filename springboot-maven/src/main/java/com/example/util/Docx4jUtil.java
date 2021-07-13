@@ -1,489 +1,354 @@
 package com.example.util;
 
+import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
-import org.docx4j.openpackaging.exceptions.Docx4JException;
+import org.docx4j.finders.ClassFinder;
+import org.docx4j.finders.RangeFinder;
+import org.docx4j.jaxb.Context;
+import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
+import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.org.apache.poi.util.IOUtils;
 import org.docx4j.wml.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
-import javax.xml.bind.JAXBElement;
+import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.regex.Matcher;
+import java.io.*;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * @author zhangy
- * @Time 2021-07-07 15:51
- * @Description:
+ * @Time 2021-07-12 16:08
+ * @Description: 关于文件操作的工具类
  */
 public class Docx4jUtil {
-    public static Builder Builder;
 
-    public static Builder of(String path) throws FileNotFoundException, Docx4JException {
-        return new Builder(path);
-    }
+    private static final Logger logger = LoggerFactory.getLogger(Docx4jUtil.class);
 
-    public static class Builder {
-        private WordprocessingMLPackage template = null;
-        private Iterator<Text> texts = null;
-
-        // 占位符参数map
-        private Map<String, String> params = new HashMap<>();
-
-        private Builder(String path) throws FileNotFoundException, Docx4JException {
-            if (path != null && !path.isEmpty()) {
-                this.template = WordprocessingMLPackage.load(new FileInputStream(new File(path)));
-                this.texts = getAllPlaceholderElementFromObject(template.getMainDocumentPart()).iterator();
-            }
-        }
-
-        /**
-         * 增加文本占位符参数(一个)
-         *
-         * @param key   键
-         * @param value 值
-         * @return Builder对象
-         */
-        public Builder addParam(String key, String value) {
-            Builder builder = this;
-            if (key != null && !key.isEmpty()) {
-				/*while (texts.hasNext()) {
-					Text text = texts.next();
-					String temp = text.getValue();
-					if (temp.equals("${" + key + "}")) {
-						text.setValue(value);
-						texts.remove();
-						return builder;
-					}
-				}*/
-                params.put(key, value);
-            }
-            return builder;
-        }
-
-        /**
-         * 增加参数(多个)
-         *
-         * @param params 多个参数的map
-         * @return Builder对象
-         */
-        public Builder addParams(Map<String, String> params) {
-            this.params = params;
-            return this;
-        }
-
-        /**
-         * 增加一个表格
-         *
-         * @param tablePlaceholder 寻找表格的占位符
-         * @param placeholderRows  模板行所占行数
-         * @param list             替换模板占位符的数据
-         * @return Builder对象
-         * @throws JAXBException JAXBException
-         * @throws Docx4JException Docx4JException
-         */
-        public Builder addTable(String tablePlaceholder, int placeholderRows, List<Map<String, String>> list)
-                throws Docx4JException, JAXBException {
-            List<Object> tables = getAllElementFromObject(template.getMainDocumentPart(), Tbl.class);
-
-            Tbl tempTable = getTemplateTable(tables, tablePlaceholder);
-            if (tempTable != null && list != null && !list.isEmpty()) {
-                List<Object> trs = getAllElementFromObject(tempTable, Tr.class);
-                int rows = trs.size();
-
-                if (rows > placeholderRows) {
-                    List<Tr> tempTrs = new ArrayList<>();
-                    for (int i = rows - placeholderRows; i < rows; i++) {
-                        tempTrs.add((Tr) trs.get(i));
-                    }
-
-                    for (Map<String, String> trData : list) {
-                        for (Tr tempTr : tempTrs) {
-                            addRowToTable(tempTable, tempTr, trData);
-                        }
-                    }
-
-                    for (Tr tempTr : tempTrs) {
-                        tempTable.getContent().remove(tempTr);
-                    }
-                }
-            }
-            return this;
-
-        }
-
-        private void loadImg(Tbl tempTable, byte[] decodeBuffer, int maxWidth) {
-            Inline inline = createInlineImage(template, decodeBuffer, maxWidth);
-            P paragraph = addInlineImageToParagraph(inline);
-            List<Object> rows = getAllElementFromObject(tempTable, Tr.class);
-            Tr tr = (Tr) rows.get(0);
-            List<Object> cells = getAllElementFromObject(tr, Tc.class);
-            Tc tc = (Tc) cells.get(0);
-            tc.getContent().clear();
-            tc.getContent().add(paragraph);
-        }
-
-        /**
-         * 通过占位符确定加载图片的位置,图片的位置为表格
-         *
-         * @param placeholder  占位符
-         * @param decodeBuffer 图片的字节流
-         * @return 当前对象
-         * @throws Docx4JException Docx4JException
-         * @throws JAXBException   JAXBException
-         */
-        public Builder addImg(String placeholder, byte[] decodeBuffer) throws Docx4JException, JAXBException {
-            addImg(placeholder, decodeBuffer, 0);
-            return this;
-        }
-
-        /**
-         * 通过占位符确定加载图片的位置,图片的位置为表格
-         *
-         * @param placeholder  占位符
-         * @param decodeBuffer 图片的字节流
-         * @param maxWidth     图片的最多宽度,不传默认写入图片原始宽度
-         * @return 当前对象
-         * @throws Docx4JException Docx4JException
-         * @throws JAXBException   JAXBException
-         */
-        public Builder addImg(String placeholder, byte[] decodeBuffer, int maxWidth) throws Docx4JException, JAXBException {
-            List<Object> tables = getAllElementFromObject(template.getMainDocumentPart(), Tbl.class);
-            Tbl tempTable = getTemplateTable(tables, placeholder);
-            loadImg(tempTable, decodeBuffer, maxWidth);
-            return this;
-        }
-
-        /**
-         * 通过int的位置数组确定加载图片的位置,图片的位置为表格（以主界面为基准）
-         *
-         * @param wz           int型数组，长度必须为3 ，第一个值为第几个表格，第二个值为第几行，第三个参数为第几个单元格
-         * @param decodeBuffer 图片的字节流
-         * @param maxWidth     图片的最多宽度,不传默认写入图片原始宽度
-         * @return 当前对象
-         */
-        public Builder addImg(int[] wz, byte[] decodeBuffer, int maxWidth) {
-            Tc tc = getTcByWz(wz);
-            Tbl tempTable = (Tbl) getAllElementFromObject(tc, Tbl.class).get(0);
-            loadImg(tempTable, decodeBuffer, maxWidth);
-            return this;
-        }
-
-        /**
-         * 通过int的位置数组确定加载图片的位置,图片的位置为表格（以主界面为基准）
-         *
-         * @param wz           int型数组，长度必须为3 ，第一个值为第几个表格，第二个值为第几行，第三个参数为第几个单元格
-         * @param decodeBuffer 图片的字节流
-         * @return 当前对象
-         */
-        public Builder addImg(int[] wz, byte[] decodeBuffer) {
-            addImg(wz, decodeBuffer, 0);
-            return this;
-        }
-
-        /**
-         * 添加段落
-         *
-         * @param list 数据集合
-         * @param wz   模板段落所在的位置，长度为三（第几个表格，第几行，第几个单元格）
-         * @return Builder对象
-         */
-        public Builder addParagrash(List<Map<String, String>> list, int[] wz) {
-            Tc tc = getTcByWz(wz);
-            List<Object> paraList = getAllElementFromObject(tc, P.class);
-            tc.getContent().clear();
-            for (Map<String, String> item : list) {
-                paraList.forEach((tempPara) -> {
-                    P workingPara = (P) XmlUtils.deepCopy(tempPara);
-                    repaleTexts(workingPara, item);
-                    tc.getContent().add(workingPara);
-                });
-            }
-            return this;
-        }
-
-        /**
-         * 移除含有占位符的Tr
-         * @param placeholder 占位符
-         * @return Builder对象
-         */
-        public Builder removeTrByPlaceholder(String placeholder) {
-            //这种方式获取是正常的，但是get()方法操作的时候不能正常替换文本了。
-            //List<Object> trs = template.getMainDocumentPart().getJAXBNodesViaXPath("//w:tr", true);
-            List<Object> trs = getAllElementFromObject(template.getMainDocumentPart(), Tr.class);
-            Tr tr = (Tr) getTemplateObj(trs,placeholder,false);
-            if(tr != null){
-                Tbl tbl = (Tbl) tr.getParent();
-                tbl.getContent().remove(tr);
-            }
-            return this;
-        }
-
-        /**
-         * 移除含有占位符的Tr
-         * @param placeholders 占位符的集合
-         * @return Builder对象
-         */
-        public Builder removeTrByPlaceholder(List<String> placeholders) {
-            /* List<Object> trs = template.getMainDocumentPart().getJAXBNodesViaXPath("//w:tr", true);*/
-            List<Object> trs = getAllElementFromObject(template.getMainDocumentPart(), Tr.class);
-            List<Object> list = getTemplateObjs(trs,placeholders);
-            for (Object o:list) {
-                Tr tr = (Tr) o;
-                if(tr != null){
-                    Tbl tbl = (Tbl) tr.getParent();
-                    tbl.getContent().remove(tr);
-                }
-            }
-            return this;
-        }
-
-        /**
-         * 获取文件字节流
-         *
-         * @return 文件字节流
-         * @throws Docx4JException docx异常
-         */
-        public byte[] get() throws Docx4JException {
-            if (!params.isEmpty()) {
-                while (texts.hasNext()) {
-                    Text text = texts.next();
-                    String temp = text.getValue();
-                    for (Entry<String, String> param : params.entrySet()) {
-                        if (temp.equals("${" + param.getKey() + "}")) {
-                            text.setValue(param.getValue());
-                        }
-                    }
-                }
-            }
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            template.save(outputStream);
-            return outputStream.toByteArray();
-        }
-
-        /**
-         * 获取指定单元格
-         *
-         * @param temp 模板段落所在的位置，长度为三（第几个表格，第几行，第几个单元格）
-         * @return tc
-         */
-        private Tc getTcByWz(int[] temp) {
-            List<Object> tables = getAllElementFromObject(template.getMainDocumentPart(), Tbl.class);
-            Tbl wzTable = (Tbl) tables.get(temp[0]);
-            Tr tr = (Tr) getAllElementFromObject(wzTable, Tr.class).get(temp[1]);
-            return (Tc) getAllElementFromObject(tr, Tc.class).get(temp[2]);
-        }
-
-    }
+    private static WordprocessingMLPackage wordMLPackage;
+    private static ObjectFactory factory;
 
     /**
-     * 创建包含图片的一个内联对象
+     * 替换变量并下载word文档
      *
-     * @param wordMLPackage WordprocessingMLPackage
-     * @param bytes 图片字节流
-     * @param maxWidth 最大宽度
-     * @return 图片的内联对象
+     * @param inputStream
+     * @param map
+     * @param dataList
+     * @param response
+     * @param fileName
      */
-    private static Inline createInlineImage(WordprocessingMLPackage wordMLPackage, byte[] bytes, int maxWidth) {
-        Inline inline = null;
+    public static void downloadDocxUseDoc4j(InputStream inputStream,
+                                           Map<String, String> map,
+                                           List<Map<String, Object>> dataList,
+                                           List<Map<String, Object>> picList,
+                                           String fileName,
+                                           HttpServletResponse response) {
+
+        OutputStream outs = null;
         try {
-            BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wordMLPackage, bytes);
-            int docPrId = 1;
-            int cNvPrId = 2;
-            if (maxWidth > 0) {
-                inline = imagePart.createImageInline("Filename hint", "Alternative text", docPrId, cNvPrId, false, maxWidth);
-            } else {
-                inline = imagePart.createImageInline("Filename hint", "Alternative text", docPrId, cNvPrId, false);
-            }
+            // 设置响应头
+            fileName = URLEncoder.encode(fileName, "UTF-8");
+            response.setContentType("application/octet-stream;charset=UTF-8");
+            response.setCharacterEncoding("utf-8");
+            response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".docx");
+            response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+            outs = response.getOutputStream();
+            Docx4jUtil.replaceDocUseDoc4j(inputStream,map,dataList,picList,outs);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
-        return inline;
     }
 
     /**
-     * 创建一个对象工厂并用它创建一个段落和一个可运行块R. 然后将可运行块添加到段落中. 接下来创建一个图画并将其添加到可运行块R中. 最后我们将内联
-     * 对象添加到图画中并返回段落对象.
-     *
-     * @param inline 包含图片的内联对象.
-     * @return 包含图片的段落
+     * 替换变量并输出word文档
+     * @param inputStream
+     * @param map
+     * @param dataList
+     * @param picList
+     * @param outputStream
      */
-    private static P addInlineImageToParagraph(Inline inline) {
-        // 添加内联对象到一个段落中
-        ObjectFactory factory = new ObjectFactory();
-        P paragraph = factory.createP();
-        R run = factory.createR();
-        paragraph.getContent().add(run);
-        Drawing drawing = factory.createDrawing();
-        run.getContent().add(drawing);
-        drawing.getAnchorOrInline().add(inline);
-        return paragraph;
-    }
+    public static void replaceDocUseDoc4j(InputStream inputStream,
+                                          Map<String, String> map,
+                                          List<Map<String, Object>> dataList,
+                                          List<Map<String, Object>> picList,
+                                          OutputStream outputStream) {
+        MainDocumentPart mainDocumentPart = null;
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(inputStream);
+            VariablePrepare.prepare(wordMLPackage);
+            mainDocumentPart = wordMLPackage.getMainDocumentPart();
+            factory = Context.getWmlObjectFactory();
 
-    // 发现docx文档包含占位符的文本节点
-    private static List<Text> getAllPlaceholderElementFromObject(Object obj) {
-        List<Text> result = new ArrayList<>();
-        Class<Text> toSearch = Text.class;
-        Text textPlaceholder;
-        if (obj instanceof JAXBElement) {
-            obj = ((JAXBElement<?>) obj).getValue();
-        }
-        if (obj.getClass().equals(toSearch)) {
-            textPlaceholder = (Text) obj;
-            if (isPlaceholder(textPlaceholder.getValue())) {
-                result.add((Text) obj);
-            }
-        } else if (obj instanceof ContentAccessor) {
-            List<?> children = ((ContentAccessor) obj).getContent();
-            for (Object child : children) {
-                result.addAll(getAllPlaceholderElementFromObject(child));
-            }
-        }
-        return result;
-    }
+            if (!CollectionUtils.isEmpty(map) || !CollectionUtils.isEmpty(dataList) || !CollectionUtils.isEmpty(picList)) {
+                // 将${}里的内容结构层次替换为一层,清扫docx4j模板变量字符
+                Docx4jUtil.cleanDocumentPart(mainDocumentPart);
 
-    // 发现docx文档中的节点
-    private static List<Object> getAllElementFromObject(Object obj, Class<?> toSearch) {
-        List<Object> result = new ArrayList<>();
-        if (obj instanceof JAXBElement) {
-            obj = ((JAXBElement<?>) obj).getValue();
-        }
-        if (obj.getClass().equals(toSearch)) {
-            result.add(obj);
-        } else if (obj instanceof ContentAccessor) {
-            List<?> children = ((ContentAccessor) obj).getContent();
-            for (Object child : children) {
-                result.addAll(getAllElementFromObject(child, toSearch));
-            }
-        }
-        return result;
-    }
+                //构造循环列表的变量数据
+                ClassFinder find = new ClassFinder(Tbl.class);
+                new TraversalUtil(mainDocumentPart.getContent(), find);
+                Tbl table = (Tbl) find.results.get(1);
+                //第二行约定为模板
+                Tr dynamicTr = (Tr) table.getContent().get(1);
+                //获取模板行的xml数据
+                String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
+                for (Map<String, Object> dataMap : dataList) {
+                    //填充模板行数据
+                    Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
+                    table.getContent().add(newTr);
+                }
+                //删除模板行的占位行
+                table.getContent().remove(1);
 
-    // 这个方法只是查看表格是否含有我们的占位符，如果有则返回表格
-    private static Tbl getTemplateTable(List<Object> tables, String templateKey) {
-        return (Tbl) getTemplateObj(tables,templateKey,false);
-    }
-
-    /**
-     * 这个方法只是查看dom是否含有我们的占位符，如果有则返回dom
-     *
-     * @param objects     需要查找的dom元素
-     * @param placeholder 占位符
-     * @param f           是否全部查找，为ture时全部查找，返回的是list，为false时一找到元素就返回，只是单个元素
-     * @return 找到的元素
-     */
-    private static Object getTemplateObj(List<Object> objects, String placeholder, boolean f) {
-        List<Object> objectList = new ArrayList<>();
-        for (Object o : objects) {
-            List<?> textElements = getAllElementFromObject(o, Text.class);
-            for (Object text : textElements) {
-                Text textElement = (Text) text;
-                if (textElement.getValue() != null && textElement.getValue().equals("${" + placeholder + "}")) {
-                    if (!f) {
-                        return o;
-                    } else {
-                        objectList.add(o);
+                //插入图片
+                //书签方式
+                Document wmlDoc = (Document) mainDocumentPart.getJaxbElement();
+                Body body = wmlDoc.getBody();
+                // 提取正文中所有段落
+                List<Object> paragraphs = body.getContent();
+                // 提取书签并创建书签的游标
+                RangeFinder rt = new RangeFinder("CTBookmark", "CTMarkupRange");
+                new TraversalUtil(paragraphs, rt);
+                // 遍历书签
+                for (CTBookmark bm : rt.getStarts()) {
+                    logger.info("标签名称:" + bm.getName());
+                    for (int i = 0; i < picList.size(); i++) {
+                        Map<String, Object> stringObjectMap = picList.get(i);
+                        Set<String> keys = stringObjectMap.keySet();
+                        for (String key : keys) {
+                            if(bm.getName().equals(key)){
+                                addImage(wordMLPackage, bm, (String) stringObjectMap.get(key));
+                            }
+                        }
                     }
                 }
+
+                // 设置全局的变量替换
+                mainDocumentPart.variableReplace(map);
             }
-        }
-        return objectList.isEmpty()?null:objectList;
-    }
 
-    /**
-     *  这个方法只是查看dom是否含有我们的占位符，如果有则返回dom
-     * @param objects 需要查找的dom元素的集合
-     * @param placeholders 占位符集合
-     * @return 找到的元素的集合
-     */
-    private static List<Object> getTemplateObjs(List<Object> objects, List<String> placeholders) {
-        List<Object> objectList = new ArrayList<>();
-        for (Object o : objects) {
-            List<?> textElements = getAllElementFromObject(o, Text.class);
-            for (Object text : textElements) {
-                Text textElement = (Text) text;
-                if (textElement.getValue() != null && placeholders.contains(getPlaceholderStr(textElement.getValue()))) {
-                    objectList.add(o);
-                }
-            }
-        }
-        return objectList;
-    }
-
-    /**
-     * 复制模板行
-     *
-     * @param reviewtable  表格
-     * @param templateRow  模板行
-     * @param replacements 填充模板行的数据
-     */
-    private static void addRowToTable(Tbl reviewtable, Tr templateRow, Map<String, String> replacements) {
-        Tr workingRow = XmlUtils.deepCopy(templateRow);
-        repaleTexts(workingRow, replacements);
-        reviewtable.getContent().add(workingRow);
-    }
-
-    /**
-     * 把工作对象中的全部占位符都替换掉
-     *
-     * @param working      工作对象
-     * @param replacements map数据对象
-     */
-    private static void repaleTexts(Object working, Map<String, String> replacements) {
-        List<?> textElements = getAllElementFromObject(working, Text.class);
-        for (Object object : textElements) {
-            Text text = (Text) object;
-            String keyStr = getPlaceholderStr(text.getValue());
-            if (keyStr != null && !keyStr.isEmpty()) {
-                String replacementValue = replacements.get(keyStr);
-                if (replacementValue != null) {
-                    text.setValue(replacementValue);
-                } else {
-                    text.setValue("--");
+            // 输出word文件
+            wordMLPackage.save(outputStream);
+            outputStream.flush();
+            //输出文件到保存地点
+//            wordMLPackage.save(new File("/home/person-project/template02_out.docx"));
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }finally {
+            if(null != outputStream){
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    logger.error(e.getMessage());
                 }
             }
         }
     }
 
+
     /**
-     * 判断字符串是否有${}占位符
+     * cleanDocumentPart
      *
-     * @param str 需要判断的字符串
-     * @return 是否字符串是否有${}占位符
+     * @param documentPart
      */
-    private static boolean isPlaceholder(String str) {
-        if (str != null && !str.isEmpty()) {
-//            Pattern pattern = Pattern.compile("([$]\{\w+\})");
-            Pattern pattern = Pattern.compile("$\\w");
-            Matcher m = pattern.matcher(str);
-            return m.find();
+    public static boolean cleanDocumentPart(MainDocumentPart documentPart) throws Exception {
+        if (documentPart == null) {
+            return false;
         }
-        return false;
+        Document document = documentPart.getContents();
+        String wmlTemplate =
+                XmlUtils.marshaltoString(document, true, false, Context.jc);
+        document = (Document) XmlUtils.unwrap(DocxVariableClearUtils.doCleanDocumentPart(wmlTemplate, Context.jc));
+        documentPart.setContents(document);
+        return true;
     }
 
     /**
-     * 得到占位符${}中的文本
+     * 清扫 docx4j 模板变量字符,通常以${variable}形式
+     * <p>
+     * XXX: 主要在上传模板时处理一下, 后续
      *
-     * @param str 需要判断的字符串
-     * @return 占位符${}中的文本
+     * @author zhangy
+     * @Time 2021-07-12 16:08
      */
-    private static String getPlaceholderStr(String str) {
-        if (str != null && !str.isEmpty()) {
-//            Pattern p = Pattern.compile("\$\{(.*?)\}");
-            Pattern p = Pattern.compile("$.*");
-            Matcher m = p.matcher(str);
-            if (m.find()) {
-                return m.group(1);//m.group(0)包括这两个字符
-            }
+    private static class DocxVariableClearUtils {
+
+        /**
+         * 去任意XML标签
+         */
+        private static final Pattern XML_PATTERN = Pattern.compile("<[^>]*>");
+
+        private DocxVariableClearUtils() {
         }
-        return null;
+
+        /**
+         * start符号
+         */
+        private static final char PREFIX = '$';
+
+        /**
+         * 中包含
+         */
+        private static final char LEFT_BRACE = '{';
+
+        /**
+         * 结尾
+         */
+        private static final char RIGHT_BRACE = '}';
+
+        /**
+         * 未开始
+         */
+        private static final int NONE_START = -1;
+
+        /**
+         * 未开始
+         */
+        private static final int NONE_START_INDEX = -1;
+
+        /**
+         * 开始
+         */
+        private static final int PREFIX_STATUS = 1;
+
+        /**
+         * 左括号
+         */
+        private static final int LEFT_BRACE_STATUS = 2;
+
+        /**
+         * 右括号
+         */
+        private static final int RIGHT_BRACE_STATUS = 3;
+
+
+        /**
+         * doCleanDocumentPart
+         *
+         * @param wmlTemplate
+         * @param jc
+         * @return
+         * @throws JAXBException
+         */
+        private static Object doCleanDocumentPart(String wmlTemplate, JAXBContext jc) throws JAXBException {
+            // 进入变量块位置
+            int curStatus = NONE_START;
+            // 开始位置
+            int keyStartIndex = NONE_START_INDEX;
+            // 当前位置
+            int curIndex = 0;
+            char[] textCharacters = wmlTemplate.toCharArray();
+            StringBuilder documentBuilder = new StringBuilder(textCharacters.length);
+            documentBuilder.append(textCharacters);
+            // 新文档
+            StringBuilder newDocumentBuilder = new StringBuilder(textCharacters.length);
+            // 最后一次写位置
+            int lastWriteIndex = 0;
+            for (char c : textCharacters) {
+                switch (c) {
+                    case PREFIX:
+                        // TODO 不管其何状态直接修改指针,这也意味着变量名称里面不能有PREFIX
+                        keyStartIndex = curIndex;
+                        curStatus = PREFIX_STATUS;
+                        break;
+                    case LEFT_BRACE:
+                        if (curStatus == PREFIX_STATUS) {
+                            curStatus = LEFT_BRACE_STATUS;
+                        }
+                        break;
+                    case RIGHT_BRACE:
+                        if (curStatus == LEFT_BRACE_STATUS) {
+                            // 接上之前的字符
+                            newDocumentBuilder.append(documentBuilder.substring(lastWriteIndex, keyStartIndex));
+                            // 结束位置
+                            int keyEndIndex = curIndex + 1;
+                            // 替换
+                            String rawKey = documentBuilder.substring(keyStartIndex, keyEndIndex);
+                            // 干掉多余标签
+                            String mappingKey = XML_PATTERN.matcher(rawKey).replaceAll("");
+                            if (!mappingKey.equals(rawKey)) {
+                                char[] rawKeyChars = rawKey.toCharArray();
+                                // 保留原格式
+                                StringBuilder rawStringBuilder = new StringBuilder(rawKey.length());
+                                // 去掉变量引用字符
+                                for (char rawChar : rawKeyChars) {
+                                    if (rawChar == PREFIX || rawChar == LEFT_BRACE || rawChar == RIGHT_BRACE) {
+                                        continue;
+                                    }
+                                    rawStringBuilder.append(rawChar);
+                                }
+                                // FIXME 要求变量连在一起
+                                String variable = mappingKey.substring(2, mappingKey.length() - 1);
+                                int variableStart = rawStringBuilder.indexOf(variable);
+                                if (variableStart > 0) {
+                                    rawStringBuilder = rawStringBuilder.replace(variableStart, variableStart + variable.length(), mappingKey);
+                                }
+                                newDocumentBuilder.append(rawStringBuilder.toString());
+                            } else {
+                                newDocumentBuilder.append(mappingKey);
+                            }
+                            lastWriteIndex = keyEndIndex;
+
+                            curStatus = NONE_START;
+                            keyStartIndex = NONE_START_INDEX;
+                        }
+                    default:
+                        break;
+                }
+                curIndex++;
+            }
+            // 余部
+            if (lastWriteIndex < documentBuilder.length()) {
+                newDocumentBuilder.append(documentBuilder.substring(lastWriteIndex));
+            }
+            return XmlUtils.unmarshalString(newDocumentBuilder.toString(), jc);
+        }
+    }
+
+    /**
+     * 插入图片
+     *
+     * @param wPackage
+     * @param bm
+     * @param file
+     */
+    public static void addImage(WordprocessingMLPackage wPackage, CTBookmark bm, String file) {
+        logger.info("addImage :->{},{},{}", wPackage, bm,file);
+        try {
+            // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
+            // 获取该书签的父级段落
+            P p = (P) (bm.getParent());
+            // R对象是匿名的复杂类型，然而我并不知道具体啥意思，估计这个要好好去看看ooxml才知道
+            R run = factory.createR();
+            // 读入图片并转化为字节数组，因为docx4j只能字节数组的方式插入图片
+            byte[] bytes = IOUtils.toByteArray(new FileInputStream(file));
+
+            // InputStream is = new FileInputStream;
+            // byte[] bytes = IOUtils.toByteArray(inputStream);
+            // byte[] bytes = FileUtil.getByteFormBase64DataByImage("");
+            // 开始创建一个行内图片
+            BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wPackage, bytes);
+            // createImageInline函数的前四个参数我都没有找到具体啥意思，，，，
+            // 最有一个是限制图片的宽度，缩放的依据
+            Inline inline = imagePart.createImageInline(null, null, 0, 1, false, 0);
+            // 获取该书签的父级段落
+            // drawing理解为画布？
+            Drawing drawing = factory.createDrawing();
+            drawing.getAnchorOrInline().add(inline);
+            run.getContent().add(drawing);
+            p.getContent().add(run);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
     }
 }
