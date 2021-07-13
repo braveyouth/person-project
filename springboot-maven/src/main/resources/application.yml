@@ -13,7 +13,8 @@ spring:
     servlet:
       load-on-startup: 1
 
-docxPath: /home/person-project/helloworld.docx
 picPath: /home/person-project/avatar.png
-templatePath: /home/person-project/template.docx
-outPath: /home/person-project/out.docx
+template01Path: /home/person-project/template01.docx
+template01OutPath: /home/person-project/template01_out.docx
+template02Path: /home/person-project/template02.docx
+template02outPath: /home/person-project/template02_out.docx

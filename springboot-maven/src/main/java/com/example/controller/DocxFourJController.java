@@ -3,12 +3,16 @@ package com.example.controller;
 import com.alibaba.fastjson.JSON;
 import com.example.util.DocImageHandler;
 import com.example.util.Docx4jUtil;
+import com.example.util.Docx4jUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.out.HTMLSettings;
+import org.docx4j.dml.CTNonVisualDrawingProps;
+import org.docx4j.dml.wordprocessingDrawing.Anchor;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.finders.ClassFinder;
 import org.docx4j.finders.RangeFinder;
@@ -53,14 +57,17 @@ public class DocxFourJController {
     private static WordprocessingMLPackage wordMLPackage;
     private static ObjectFactory  factory;
 
-    @Value("${docxPath}")
-    private String docxPath;
     @Value("${picPath}")
     private String picPath;
-    @Value("${templatePath}")
-    private String templatePath;
-    @Value("${outPath}")
-    private String outPath;
+    @Value("${template01Path}")
+    private String template01Path;
+    @Value("${template01OutPath}")
+    private String template01OutPath;
+    @Value("${template02Path}")
+    private String template02Path;
+    @Value("${template02outPath}")
+    private String template02outPath;
+
     @PostConstruct
     public void init(){
         logger.info("docx4j服务,{}", true);
@@ -72,16 +79,18 @@ public class DocxFourJController {
      */
     @GetMapping("/createDocx")
     public String createDocx(){
-        if(!StringUtils.isEmpty(docxPath)) {
+        if(!StringUtils.isEmpty(template01Path)) {
             try {
                 wordMLPackage =  WordprocessingMLPackage.createPackage();
-                wordMLPackage.save(new File(docxPath));
+                wordMLPackage.save(new File(template01Path));
 //                Docx4J.save(wordMLPackage, new File(docxPath));
             } catch (InvalidFormatException e) {
                 logger.error(e.getMessage());
             }catch (Docx4JException e){
                 logger.error(e.getMessage());
             }
+        }else {
+            return "路径不存在";
         }
         return "基础创建成功";
     }
@@ -95,7 +104,7 @@ public class DocxFourJController {
     public String addParagraph() {
         try {
             //先加载word文档
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
 //            wordMLPackage = Docx4J.load(new File(docxPath));
 
             //增加内容
@@ -105,7 +114,7 @@ public class DocxFourJController {
 
             wordMLPackage.getMainDocumentPart().addStyledParagraphOfText("Subject", "试一试");
             //保存文档
-            wordMLPackage.save(new File(docxPath));
+            wordMLPackage.save(new File(template01OutPath));
         } catch (Docx4JException e) {
             logger.error("addParagraph to docx error: Docx4JException", e);
         }
@@ -117,13 +126,11 @@ public class DocxFourJController {
      */
     @GetMapping("/wordInsertImage")
     public String wordInsertImage() {
-        File file = null;
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
-            file = new File(picPath);
-            byte[] bytes = DocImageHandler.convertImageToByteArray(file);
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
+            byte[] bytes = DocImageHandler.convertImageToByteArray(new File(picPath));
             DocImageHandler.addImageToPackage(wordMLPackage, bytes);
-            wordMLPackage.save(new File(docxPath));
+            wordMLPackage.save(new File(template02outPath));
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
@@ -136,7 +143,7 @@ public class DocxFourJController {
     @GetMapping("addTable")
     public String addTable() {
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
 
             factory = Context.getWmlObjectFactory();
@@ -178,7 +185,7 @@ public class DocxFourJController {
 
             //4 将新增表格加到主要内容中
             mainDocumentPart.addObject(table);
-            wordMLPackage.save(new File(docxPath));
+            wordMLPackage.save(new File(template01Path));
         } catch (Docx4JException e) {
             logger.error("createDocx error: Docx4JException", e);
         }
@@ -191,7 +198,7 @@ public class DocxFourJController {
     @GetMapping("readTable")
     public String readTable(){
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
 
             // 1. ClassFinder构造类型查询器获取指定元素
@@ -231,7 +238,7 @@ public class DocxFourJController {
     public String readParagraph() {
         List<Object> list = new ArrayList<>();
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
 
             String contentType = wordMLPackage.getContentType();
             logger.info("contentType:"+contentType);
@@ -258,15 +265,15 @@ public class DocxFourJController {
         boolean nestLists = true;
         boolean save = true;
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
         } catch (Docx4JException e) {
            logger.error(e.getMessage());
         }
 
         HTMLSettings html = Docx4J.createHTMLSettings();
         //设置图片的目录地址
-        html.setImageDirPath(docxPath + "_files");
-        html.setImageTargetUri(docxPath.substring(docxPath.lastIndexOf("/") + 1 ) + "_files");
+        html.setImageDirPath(template01Path + "_files");
+        html.setImageTargetUri(template01Path.substring(template01Path.lastIndexOf("/") + 1 ) + "_files");
         html.setWmlPackage(wordMLPackage);
         String userCSS = null;
         if (nestLists) {
@@ -280,7 +287,7 @@ public class DocxFourJController {
         OutputStream os = null;
         try {
             if (save) {
-                os = new FileOutputStream(docxPath + ".html");
+                os = new FileOutputStream(template01Path + ".html");
             } else {
                 os = new ByteArrayOutputStream();
             }
@@ -292,7 +299,7 @@ public class DocxFourJController {
 
         }
         if (save) {
-            System.out.println("Saved: " + docxPath + ".html ");
+            System.out.println("Saved: " + template01Path + ".html ");
         } else {
             System.out.println(((ByteArrayOutputStream) os).toString());
         }
@@ -309,8 +316,8 @@ public class DocxFourJController {
     public String wordToPdf() throws FileNotFoundException {
         try {
             wordMLPackage = WordprocessingMLPackage
-                    .load(new File(docxPath));
-            Docx4J.toPDF(wordMLPackage, new FileOutputStream(new File(docxPath + ".pdf")));
+                    .load(new File(template01Path));
+            Docx4J.toPDF(wordMLPackage, new FileOutputStream(new File(template01Path + ".pdf")));
         } catch (Docx4JException e) {
             logger.error(e.getMessage());
         }
@@ -322,12 +329,12 @@ public class DocxFourJController {
      */
     @GetMapping("replaceTableByVariable")
     public String replaceTableByVariable(){
-        factory = Context.getWmlObjectFactory();
         boolean save = true;
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             VariablePrepare.prepare(wordMLPackage);
             MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+            Docx4jUtils.cleanDocumentPart(documentPart);
 
             //需要替换的map
             HashMap<String, String> mappings = new HashMap<String, String>();
@@ -345,14 +352,28 @@ public class DocxFourJController {
 //            documentPart.setJaxbElement((Document) obj);
             long end = System.currentTimeMillis();
             long total = end - start;
-            System.out.println("Time: " + total);
+            logger.info("Time: " + total);
 
             // Save it
             if (save) {
-                SaveToZipFile saver = new SaveToZipFile(wordMLPackage);
-                saver.save("/home/person-project/helloworld_1.docx");
+                // 输出word文件
+
+                //1
+//                SaveToZipFile saver = new SaveToZipFile(wordMLPackage);
+//                saver.save("/home/person-project/helloworld_1.docx");
+
+                //2
+//                OutputStream outputStream = new FileOutputStream(new File(docxOutPath));
+//                wordMLPackage.save(outputStream);
+//                outputStream.flush();
+
+                //3
+//                wordMLPackage.save(new File(docxOutPath));
+
+                //4
+                Docx4J.save(wordMLPackage, new File(template01OutPath));
             } else {
-                System.out.println(XmlUtils.marshaltoString(documentPart.getJaxbElement(), true, true));
+                logger.info(XmlUtils.marshaltoString(documentPart.getJaxbElement(), true, true));
             }
 
         } catch (Exception e) {
@@ -368,12 +389,13 @@ public class DocxFourJController {
     public String replaceTableByLoop(){
         factory = Context.getWmlObjectFactory();
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
             MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+            Docx4jUtils.cleanDocumentPart(documentPart);
 
             // 构造循环列表的数据
             ClassFinder find = new ClassFinder(Tbl.class);
-            new TraversalUtil(wordMLPackage.getMainDocumentPart().getContent(), find);
+            new TraversalUtil(documentPart.getContent(), find);
             // 获取到第一个表格元素
             Tbl table = (Tbl) find.results.get(0);
             // 第一行约定为模板，获取到第一行内容
@@ -390,7 +412,7 @@ public class DocxFourJController {
             // 删除模板行的占位行
             table.getContent().remove(0);
 
-            Docx4J.save(wordMLPackage, new File("/home/person-project/helloworld_1.docx"));
+            Docx4J.save(wordMLPackage, new File(template01OutPath));
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
@@ -403,7 +425,7 @@ public class DocxFourJController {
     @GetMapping("/booknameReplaceVar")
     public String booknameReplaceVar(){
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(docxPath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template02Path));
             MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
             factory = Context.getWmlObjectFactory();
 
@@ -429,7 +451,7 @@ public class DocxFourJController {
                     addImage(wordMLPackage, bm, picPath);
                 }
             }
-            Docx4J.save(wordMLPackage, new File("/home/person-project/helloworld_1.docx"));
+            Docx4J.save(wordMLPackage, new File(template02outPath));
 
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -449,7 +471,7 @@ public class DocxFourJController {
     @GetMapping("/placeholderTable")
     public String placeholderTable(){
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new File(templatePath));
+            wordMLPackage = WordprocessingMLPackage.load(new File(template02Path));
             Map<String, String> mappings = new HashMap<String, String>();
             //构造非循环格子的表格数据
             mappings.put("name", "马参军");
@@ -470,11 +492,46 @@ public class DocxFourJController {
             //删除模板行的占位行
             table.getContent().remove(1);
             wordMLPackage.getMainDocumentPart().variableReplace(mappings);//设置全局的变量替换
-            Docx4J.save(wordMLPackage, new File(outPath));
+            Docx4J.save(wordMLPackage, new File(template02outPath));
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
         return "按占位符替换内容成功";
+    }
+
+    /**
+     * 替换图片
+     * @return
+     */
+    @GetMapping("placeholderPicTable")
+    public String placeholderPicTable(){
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new File("/home/person-project/1539525754960040802.docx"));
+            MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
+            String xPath = "//w:drawing";
+            List<Object> list = documentPart.getJAXBNodesViaXPath(xPath, true);
+            @SuppressWarnings("unchecked")
+            JAXBElement<Drawing> element = (JAXBElement<Drawing>) list.get(0);
+            Drawing drawing = element.getValue();
+            //获取原图的相关信息，再取创建一个新的图片，用户替换原图
+            Anchor anchor = (Anchor) drawing.getAnchorOrInline().get(0);//当前的图片
+            Integer posH = anchor.getPositionH().getPosOffset();//原占位图的坐标位置
+            Integer posV = anchor.getPositionV().getPosOffset();
+            CTNonVisualDrawingProps docPr = anchor.getDocPr();
+            int xId = (int) docPr.getId();
+            String filenameHint = docPr.getName();
+            String altText = docPr.getDescr();
+            int yId = (int) anchor.getGraphic().getGraphicData().getPic().getNvPicPr().getCNvPr().getId();
+            byte bytes[] = FileUtils.readFileToByteArray(new File(picPath));
+            BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wordMLPackage, bytes);
+//            Anchor inline = imagePart.createImageAnchor(filenameHint, altText, xId, yId, false, posH, posV);
+            Inline inline = imagePart.createImageInline(filenameHint, altText, xId, yId, posV, posH, false);
+            drawing.getAnchorOrInline().set(0, inline);
+            wordMLPackage.save(new File("/home/person-project/1539525754960040802_out.docx"));
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "图片已经替换";
     }
 
 
@@ -506,7 +563,6 @@ public class DocxFourJController {
     public void downloadWord(HttpServletResponse response) throws Docx4JException, JAXBException, FileNotFoundException {
         //模板文件路径
 //        String path = this.getClass().getClassLoader().getResource("D://template//test.docx").getPath();
-        String path = docxPath;
         //模板中要生成表格的数据
         List<Map<String, String>> list = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
@@ -535,7 +591,7 @@ public class DocxFourJController {
         m.put("active", "游泳");
 
         //处理好数据后就是超级简单的调用
-        byte[] bytes = Docx4jUtil.of(path)
+        byte[] bytes = Docx4jUtil.of(template01Path)
                 .addParam("title", "测试文档标题")
                 .addParam("user", "测试人")
                 .addParams(m)
@@ -560,6 +616,30 @@ public class DocxFourJController {
             }
         }
 
+    }
+
+    @GetMapping("/method")
+    public String method(){
+        try {
+            wordMLPackage = WordprocessingMLPackage.load(new FileInputStream(new File(template01Path)));
+            MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
+            Docx4jUtils.cleanDocumentPart(mainDocumentPart);
+            Map map = new HashMap();
+            map.put("name", "张三");
+            map.put("sex", "男");
+            map.put("age", "18");
+            if (!map.isEmpty()) {
+                // 替换文本内容
+                mainDocumentPart.variableReplace(map);
+            }
+            // 输出word文件
+            OutputStream outputStream = new FileOutputStream(new File(template01OutPath));
+            wordMLPackage.save(outputStream);
+            outputStream.flush();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        return "ok";
     }
 
     /**
