@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.example.dto.CompositeDocxReq;
 import com.example.util.DocImageHandler;
 import com.example.util.Docx4jUtil;
 import com.example.util.Docx4jUtils;
@@ -19,7 +20,6 @@ import org.docx4j.finders.RangeFinder;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
-import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.io.SaveToZipFile;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
@@ -29,9 +29,7 @@ import org.docx4j.wml.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
 import javax.servlet.ServletOutputStream;
@@ -40,6 +38,8 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.math.BigInteger;
+import java.net.URLEncoder;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -78,15 +78,23 @@ public class DocxFourJController {
      * 获取文档可操作对象
      */
     @GetMapping("/createDocx")
-    public String createDocx(){
+    public String createDocx(HttpServletResponse response){
         if(!StringUtils.isEmpty(template01Path)) {
+            OutputStream outs = null;
             try {
                 wordMLPackage =  WordprocessingMLPackage.createPackage();
-                wordMLPackage.save(new File(template01Path));
+//                wordMLPackage.save(new File(template01Path));
 //                Docx4J.save(wordMLPackage, new File(docxPath));
-            } catch (InvalidFormatException e) {
-                logger.error(e.getMessage());
-            }catch (Docx4JException e){
+                String fileName = URLEncoder.encode("模板表", "UTF-8");
+                response.setContentType("application/octet-stream;charset=UTF-8");
+                response.setCharacterEncoding("utf-8");
+                response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".docx");
+                response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+                outs = response.getOutputStream();
+                wordMLPackage.save(outs);
+                outs.flush();
+            } catch (Exception e) {
                 logger.error(e.getMessage());
             }
         }else {
@@ -447,7 +455,7 @@ public class DocxFourJController {
                 if (bm.getName().equals("name0")) {
                     replaceText(bm, "zhangsan");
                 }
-                if (bm.getName().equals("pic")) {
+                if (bm.getName().equals("pic01")) {
                     addImage(wordMLPackage, bm, picPath);
                 }
             }
@@ -472,6 +480,7 @@ public class DocxFourJController {
     public String placeholderTable(){
         try {
             wordMLPackage = WordprocessingMLPackage.load(new File(template02Path));
+            Docx4jUtils.cleanDocumentPart(wordMLPackage.getMainDocumentPart());
             Map<String, String> mappings = new HashMap<String, String>();
             //构造非循环格子的表格数据
             mappings.put("name", "马参军");
@@ -482,11 +491,14 @@ public class DocxFourJController {
             ClassFinder find = new ClassFinder(Tbl.class);
             new TraversalUtil(wordMLPackage.getMainDocumentPart().getContent(), find);
             Tbl table = (Tbl) find.results.get(1);
-            Tr dynamicTr = (Tr) table.getContent().get(1);//第二行约定为模板
-            String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);//获取模板行的xml数据
+            //第二行约定为模板
+            Tr dynamicTr = (Tr) table.getContent().get(1);
+            //获取模板行的xml数据
+            String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
             List<Map<String , Object>> dataList = dataList();
             for (Map<String, Object> dataMap : dataList) {
-                Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);//填充模板行数据
+                //填充模板行数据
+                Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
                 table.getContent().add(newTr);
             }
             //删除模板行的占位行
@@ -540,16 +552,16 @@ public class DocxFourJController {
     private static List<Map<String , Object>> dataList() {
         List<Map<String , Object>> dataList = new ArrayList<Map<String , Object>>();
         Map<String , Object> m1 = new HashMap<String , Object>();
-        m1.put("item.number", "1");m1.put("item.name", "关银萍");
-        m1.put("item.sex", "女");m1.put("item.skill", "来吧，青龙偃月刀");
+        m1.put("number", "1");m1.put("company", "阿里巴巴");
+        m1.put("slogan", "让天下没有难做的生意");
         dataList.add(m1);
         Map<String , Object> m2 = new HashMap<String , Object>();
-        m2.put("item.number", "2");m2.put("item.name", "马云禄");
-        m2.put("item.sex", "女");m2.put("item.skill", "啥玩意，手里方片摸牌，占位占位看到换行的样式效果，占位占位看到换行的样式效果");
+        m2.put("number", "2");m2.put("company", "腾讯");
+        m2.put("slogan", "连接你我 共生未来");
         dataList.add(m2);
         Map<String , Object> m3 = new HashMap<String , Object>();
-        m3.put("item.number", "3");m3.put("item.name", "张星彩");
-        m3.put("item.sex", "女");m3.put("item.skill", "长缨在手，擦擦擦擦");
+        m3.put("number", "3");m3.put("company", "字节跳动");
+        m3.put("slogan", "激发创造 丰富生活");
         dataList.add(m3);
         return dataList;
     }
@@ -577,13 +589,14 @@ public class DocxFourJController {
         list.stream();
 
         //模板中要插入图片的数据
-//        byte[] img = null;
-//        try (InputStream input = new FileInputStream(this.getClass().getClassLoader().getResource("template/timg.jpg").getPath())){
-//            img = new byte[input.available()];
-//            input.read(img);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
+        byte[] img = null;
+//        try (InputStream input = new FileInputStream(this.getClass().getClassLoader().getResource(picPath).getPath())){
+        try (InputStream input = new FileInputStream(new File(picPath))){
+            img = new byte[input.available()];
+            input.read(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         //要插入的map数据
         Map<String, String> m = new HashMap<>();
@@ -591,12 +604,12 @@ public class DocxFourJController {
         m.put("active", "游泳");
 
         //处理好数据后就是超级简单的调用
-        byte[] bytes = Docx4jUtil.of(template01Path)
-                .addParam("title", "测试文档标题")
-                .addParam("user", "测试人")
-                .addParams(m)
-                .addTable("name", 2, list)
-//                .addImg("img", img)
+        byte[] bytes = Docx4jUtil.of(template02Path)
+//                .addParam("title", "测试文档标题")
+//                .addParam("user", "测试人")
+//                .addParams(m)
+//                .addTable("name", 2, list)
+                .addImg("pic02", img)
                 .get();
 
         ServletOutputStream outputStream = null;
@@ -618,28 +631,89 @@ public class DocxFourJController {
 
     }
 
-    @GetMapping("/method")
-    public String method(){
+    /**
+     * 综合使用
+     * @return
+     */
+    @PostMapping("/composite")
+    public String composite(@RequestBody CompositeDocxReq compositeDocxReq, HttpServletResponse response){
+        MainDocumentPart mainDocumentPart = null;
         try {
-            wordMLPackage = WordprocessingMLPackage.load(new FileInputStream(new File(template01Path)));
-            MainDocumentPart mainDocumentPart = wordMLPackage.getMainDocumentPart();
-            Docx4jUtils.cleanDocumentPart(mainDocumentPart);
-            Map map = new HashMap();
-            map.put("name", "张三");
-            map.put("sex", "男");
-            map.put("age", "18");
-            if (!map.isEmpty()) {
-                // 替换文本内容
-                mainDocumentPart.variableReplace(map);
-            }
-            // 输出word文件
-            OutputStream outputStream = new FileOutputStream(new File(template01OutPath));
-            wordMLPackage.save(outputStream);
-            outputStream.flush();
+//            wordMLPackage = WordprocessingMLPackage.load(new File(template02Path));
+//            VariablePrepare.prepare(wordMLPackage);
+//            mainDocumentPart = wordMLPackage.getMainDocumentPart();
+//            factory = Context.getWmlObjectFactory();
+//            //清扫docx4j模板变量字符
+//            Docx4jUtils.cleanDocumentPart(mainDocumentPart);
+
+            // //构造非循环列表的变量数据
+//            Map<String, String> mappings = new HashMap<String, String>();
+//            mappings.put("name", "张三");
+//            mappings.put("sex", "男");
+//            mappings.put("skill", "游泳");
+
+
+//            //构造循环列表的变量数据
+//            ClassFinder find = new ClassFinder(Tbl.class);
+//            new TraversalUtil(mainDocumentPart.getContent(), find);
+//            Tbl table = (Tbl) find.results.get(1);
+//            //第二行约定为模板
+//            Tr dynamicTr = (Tr) table.getContent().get(1);
+//            //获取模板行的xml数据
+//            String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
+//            List<Map<String , Object>> dataList = dataList();
+//            for (Map<String, Object> dataMap : dataList) {
+//                //填充模板行数据
+//                Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
+//                table.getContent().add(newTr);
+//            }
+//            //删除模板行的占位行
+//            table.getContent().remove(1);
+//
+//            List<Map<String, Object>> picList = new ArrayList<Map<String , Object>>();
+//            Map<String, Object> map = new HashMap<>();
+//            map.put("pic01", picPath);
+//            picList.add(map);
+//            //插入图片
+//            //书签
+//            Document wmlDoc = (Document) mainDocumentPart.getJaxbElement();
+//            Body body = wmlDoc.getBody();
+//            // 提取正文中所有段落
+//            List<Object> paragraphs = body.getContent();
+//            // 提取书签并创建书签的游标
+//            RangeFinder rt = new RangeFinder("CTBookmark", "CTMarkupRange");
+//            new TraversalUtil(paragraphs, rt);
+//            // 遍历书签
+//            for (CTBookmark bm : rt.getStarts()) {
+//                logger.info("标签名称:" + bm.getName());
+//                if (bm.getName().equals("pic01")) {
+//                    addImage(wordMLPackage, bm, picPath);
+//                }
+//            }
+//
+//            //设置全局的变量替换
+//            mainDocumentPart.variableReplace(mappings);
+//            //保存新生成的docx文件
+//            Docx4J.save(wordMLPackage, new File(template02outPath));
+
+            //工具类下载
+//            Docx4jUtils.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
+//                    mappings,
+//                    dataList,
+//                    picList,
+//                    response,
+//                    "export");
+            Docx4jUtils.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
+                    compositeDocxReq.getMappings(),
+                    compositeDocxReq.getDataList(),
+                    compositeDocxReq.getPicList(),
+                    compositeDocxReq.getFileName(),
+                    response);
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
-        return "ok";
+
+        return "综合使用调用成功";
     }
 
     /**

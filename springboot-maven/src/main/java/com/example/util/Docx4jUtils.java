@@ -1,20 +1,30 @@
 package com.example.util;
 
+import org.docx4j.Docx4J;
+import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
+import org.docx4j.dml.wordprocessingDrawing.Inline;
+import org.docx4j.finders.ClassFinder;
+import org.docx4j.finders.RangeFinder;
 import org.docx4j.jaxb.Context;
+import org.docx4j.model.datastorage.migration.VariablePrepare;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
-import org.docx4j.wml.Document;
+import org.docx4j.org.apache.poi.util.IOUtils;
+import org.docx4j.wml.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URLEncoder;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -26,17 +36,26 @@ public class Docx4jUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(Docx4jUtils.class);
 
+    private static WordprocessingMLPackage wordMLPackage;
+    private static ObjectFactory factory;
+
     /**
      * 替换变量并下载word文档
      *
      * @param inputStream
      * @param map
+     * @param dataList
      * @param response
      * @param fileName
      */
-    public static void downloadDocUseDoc4j(InputStream inputStream, Map<String, String> map,
-                                           HttpServletResponse response, String fileName) {
+    public static void downloadDocxUseDoc4j(InputStream inputStream,
+                                           Map<String, String> map,
+                                           List<Map<String, Object>> dataList,
+                                           List<Map<String, Object>> picList,
+                                           String fileName,
+                                           HttpServletResponse response) {
 
+        OutputStream outs = null;
         try {
             // 设置响应头
             fileName = URLEncoder.encode(fileName, "UTF-8");
@@ -45,9 +64,8 @@ public class Docx4jUtils {
             response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".docx");
             response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
 
-            OutputStream outs  = response.getOutputStream();
-            Docx4jUtils.replaceDocUseDoc4j(inputStream,map,outs);
-
+            outs = response.getOutputStream();
+            Docx4jUtils.replaceDocUseDoc4j(inputStream,map,dataList,picList,outs);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -57,25 +75,84 @@ public class Docx4jUtils {
      * 替换变量并输出word文档
      * @param inputStream
      * @param map
+     * @param dataList
+     * @param picList
      * @param outputStream
      */
-    public static void replaceDocUseDoc4j(InputStream inputStream, Map<String, String> map,
+    public static void replaceDocUseDoc4j(InputStream inputStream,
+                                          Map<String, String> map,
+                                          List<Map<String, Object>> dataList,
+                                          List<Map<String, Object>> picList,
                                           OutputStream outputStream) {
+        MainDocumentPart mainDocumentPart = null;
         try {
-            WordprocessingMLPackage doc = WordprocessingMLPackage.load(inputStream);
-            MainDocumentPart mainDocumentPart = doc.getMainDocumentPart();
-            if (null != map && !map.isEmpty()) {
-                // 将${}里的内容结构层次替换为一层
-                Docx4jUtils .cleanDocumentPart(mainDocumentPart);
-                // 替换文本内容
+            wordMLPackage = WordprocessingMLPackage.load(inputStream);
+            VariablePrepare.prepare(wordMLPackage);
+            mainDocumentPart = wordMLPackage.getMainDocumentPart();
+            factory = Context.getWmlObjectFactory();
+
+            if (!CollectionUtils.isEmpty(map) || !CollectionUtils.isEmpty(dataList) || !CollectionUtils.isEmpty(picList)) {
+                // 将${}里的内容结构层次替换为一层,清扫docx4j模板变量字符
+                Docx4jUtils.cleanDocumentPart(mainDocumentPart);
+
+                //构造循环列表的变量数据
+                ClassFinder find = new ClassFinder(Tbl.class);
+                new TraversalUtil(mainDocumentPart.getContent(), find);
+                Tbl table = (Tbl) find.results.get(1);
+                //第二行约定为模板
+                Tr dynamicTr = (Tr) table.getContent().get(1);
+                //获取模板行的xml数据
+                String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
+                for (Map<String, Object> dataMap : dataList) {
+                    //填充模板行数据
+                    Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
+                    table.getContent().add(newTr);
+                }
+                //删除模板行的占位行
+                table.getContent().remove(1);
+
+                //插入图片
+                //书签方式
+                Document wmlDoc = (Document) mainDocumentPart.getJaxbElement();
+                Body body = wmlDoc.getBody();
+                // 提取正文中所有段落
+                List<Object> paragraphs = body.getContent();
+                // 提取书签并创建书签的游标
+                RangeFinder rt = new RangeFinder("CTBookmark", "CTMarkupRange");
+                new TraversalUtil(paragraphs, rt);
+                // 遍历书签
+                for (CTBookmark bm : rt.getStarts()) {
+                    logger.info("标签名称:" + bm.getName());
+                    for (int i = 0; i < picList.size(); i++) {
+                        Map<String, Object> stringObjectMap = picList.get(i);
+                        Set<String> keys = stringObjectMap.keySet();
+                        for (String key : keys) {
+                            if(bm.getName().equals(key)){
+                                addImage(wordMLPackage, bm, (String) stringObjectMap.get(key));
+                            }
+                        }
+                    }
+                }
+
+                // 设置全局的变量替换
                 mainDocumentPart.variableReplace(map);
             }
 
             // 输出word文件
-            doc.save(outputStream);
+            wordMLPackage.save(outputStream);
             outputStream.flush();
+            //输出文件到保存地点
+//            wordMLPackage.save(new File("/home/person-project/template02_out.docx"));
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        }finally {
+            if(null != outputStream){
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    logger.error(e.getMessage());
+                }
+            }
         }
     }
 
@@ -106,7 +183,6 @@ public class Docx4jUtils {
      * @Time 2021-07-12 16:08
      */
     private static class DocxVariableClearUtils {
-
 
         /**
          * 去任意XML标签
@@ -237,6 +313,43 @@ public class Docx4jUtils {
                 newDocumentBuilder.append(documentBuilder.substring(lastWriteIndex));
             }
             return XmlUtils.unmarshalString(newDocumentBuilder.toString(), jc);
+        }
+    }
+
+    /**
+     * 插入图片
+     *
+     * @param wPackage
+     * @param bm
+     * @param file
+     */
+    public static void addImage(WordprocessingMLPackage wPackage, CTBookmark bm, String file) {
+        logger.info("addImage :->{},{},{}", wPackage, bm,file);
+        try {
+            // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
+            // 获取该书签的父级段落
+            P p = (P) (bm.getParent());
+            // R对象是匿名的复杂类型，然而我并不知道具体啥意思，估计这个要好好去看看ooxml才知道
+            R run = factory.createR();
+            // 读入图片并转化为字节数组，因为docx4j只能字节数组的方式插入图片
+            byte[] bytes = IOUtils.toByteArray(new FileInputStream(file));
+
+            // InputStream is = new FileInputStream;
+            // byte[] bytes = IOUtils.toByteArray(inputStream);
+            // byte[] bytes = FileUtil.getByteFormBase64DataByImage("");
+            // 开始创建一个行内图片
+            BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wPackage, bytes);
+            // createImageInline函数的前四个参数我都没有找到具体啥意思，，，，
+            // 最有一个是限制图片的宽度，缩放的依据
+            Inline inline = imagePart.createImageInline(null, null, 0, 1, false, 0);
+            // 获取该书签的父级段落
+            // drawing理解为画布？
+            Drawing drawing = factory.createDrawing();
+            drawing.getAnchorOrInline().add(inline);
+            run.getContent().add(drawing);
+            p.getContent().add(run);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
     }
 }
