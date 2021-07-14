@@ -1,5 +1,6 @@
 package com.example.util;
 
+import com.example.dto.CompositeDocxReq;
 import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
@@ -40,19 +41,18 @@ public class Docx4jUtil {
 
     /**
      * 替换变量并下载word文档
-     *
      * @param inputStream
      * @param map
      * @param dataList
-     * @param response
      * @param fileName
+     * @param response
      */
     public static void downloadDocxUseDoc4j(InputStream inputStream,
-                                           Map<String, String> map,
-                                           List<Map<String, Object>> dataList,
-                                           List<Map<String, Object>> picList,
-                                           String fileName,
-                                           HttpServletResponse response) {
+                                            Map<String, String> map,
+                                            List<CompositeDocxReq.DataList> dataList,
+                                            List<Map<String, Object>> picList,
+                                            String fileName,
+                                            HttpServletResponse response) {
 
         OutputStream outs = null;
         try {
@@ -80,7 +80,7 @@ public class Docx4jUtil {
      */
     public static void replaceDocUseDoc4j(InputStream inputStream,
                                           Map<String, String> map,
-                                          List<Map<String, Object>> dataList,
+                                          List<CompositeDocxReq.DataList> dataList,
                                           List<Map<String, Object>> picList,
                                           OutputStream outputStream) {
         MainDocumentPart mainDocumentPart = null;
@@ -95,20 +95,22 @@ public class Docx4jUtil {
                 Docx4jUtil.cleanDocumentPart(mainDocumentPart);
 
                 //构造循环列表的变量数据
-                ClassFinder find = new ClassFinder(Tbl.class);
-                new TraversalUtil(mainDocumentPart.getContent(), find);
-                Tbl table = (Tbl) find.results.get(1);
-                //第二行约定为模板
-                Tr dynamicTr = (Tr) table.getContent().get(1);
-                //获取模板行的xml数据
-                String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
-                for (Map<String, Object> dataMap : dataList) {
-                    //填充模板行数据
-                    Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
-                    table.getContent().add(newTr);
+                for (int i = 0; i < dataList.size(); i++) {
+                    ClassFinder find = new ClassFinder(Tbl.class);
+                    new TraversalUtil(mainDocumentPart.getContent(), find);
+                    Tbl table = (Tbl) find.results.get(dataList.get(i).getNum());
+                    //第二行约定为模板
+                    Tr dynamicTr = (Tr) table.getContent().get(1);
+                    //获取模板行的xml数据
+                    String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
+                    for (Map<String, Object> dataMap : dataList.get(i).getDataInnerList()) {
+                        //填充模板行数据
+                        Tr newTr = (Tr) XmlUtils.unmarshallFromTemplate(dynamicTrXml, dataMap);
+                        table.getContent().add(newTr);
+                    }
+                    //删除模板行的占位行
+                    table.getContent().remove(1);
                 }
-                //删除模板行的占位行
-                table.getContent().remove(1);
 
                 //插入图片
                 //书签方式

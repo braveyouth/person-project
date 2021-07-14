@@ -695,12 +695,6 @@ public class DocxFourJController {
 //            Docx4J.save(wordMLPackage, new File(template02outPath));
 
             //工具类下载
-//            Docx4jUtil.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
-//                    mappings,
-//                    dataList,
-//                    picList,
-//                    response,
-//                    "export");
             Docx4jUtil.downloadDocxUseDoc4j(new FileInputStream(new File(template02Path)),
                     compositeDocxReq.getMappings(),
                     compositeDocxReq.getDataList(),

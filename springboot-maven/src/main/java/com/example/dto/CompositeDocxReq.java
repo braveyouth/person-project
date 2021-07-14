@@ -6,17 +6,40 @@ import java.util.Map;
 /**
  * @author zhangy
  * @Time 2021-07-13 16:10
- * @Description:
+ * @Description: 下载docx请求参数
  */
 public class CompositeDocxReq {
     //非循环列表的变量数据
     private Map<String, String> mappings;
-    //循环列表的变量数据
-    private List<Map<String , Object>> dataList;
+    //多个循环列表
+    private List<DataList> dataList;
     //图片数据
     private List<Map<String, Object>> picList;
     //导出文件名
     private String fileName;
+
+    public static class DataList{
+        //循环列表的变量数据
+        private List<Map<String , Object>> dataInnerList;
+        //处于docx中的表格序号，从0开始
+        private Integer num;
+
+        public List<Map<String, Object>> getDataInnerList() {
+            return dataInnerList;
+        }
+
+        public void setDataInnerList(List<Map<String, Object>> dataInnerList) {
+            this.dataInnerList = dataInnerList;
+        }
+
+        public Integer getNum() {
+            return num;
+        }
+
+        public void setNum(Integer num) {
+            this.num = num;
+        }
+    }
 
     public Map<String, String> getMappings() {
         return mappings;
@@ -26,11 +49,11 @@ public class CompositeDocxReq {
         this.mappings = mappings;
     }
 
-    public List<Map<String, Object>> getDataList() {
+    public List<DataList> getDataList() {
         return dataList;
     }
 
-    public void setDataList(List<Map<String, Object>> dataList) {
+    public void setDataList(List<DataList> dataList) {
         this.dataList = dataList;
     }
 
