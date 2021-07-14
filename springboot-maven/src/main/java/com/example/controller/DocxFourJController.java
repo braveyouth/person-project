@@ -303,26 +303,21 @@ public class DocxFourJController {
         boolean save = true;
         try {
             wordMLPackage = WordprocessingMLPackage.load(new File(template01Path));
-        } catch (Docx4JException e) {
-           logger.error(e.getMessage());
-        }
-
-        HTMLSettings html = Docx4J.createHTMLSettings();
-        //设置图片的目录地址
-        html.setImageDirPath(template01Path + "_files");
-        html.setImageTargetUri(template01Path.substring(template01Path.lastIndexOf("/") + 1 ) + "_files");
-        html.setWmlPackage(wordMLPackage);
-        String userCSS = null;
-        if (nestLists) {
-            userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  table, caption, tbody, tfoot, thead, tr, th, td "
-                    + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
-        } else {
-            userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  ol, ul, li, table, caption, tbody, tfoot, thead, tr, th, td "
-                    + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
-        }
-        html.setUserCSS(userCSS);
-        OutputStream os = null;
-        try {
+            HTMLSettings html = Docx4J.createHTMLSettings();
+            //设置图片的目录地址
+            html.setImageDirPath(template01Path + "_files");
+            html.setImageTargetUri(template01Path.substring(template01Path.lastIndexOf("/") + 1 ) + "_files");
+            html.setWmlPackage(wordMLPackage);
+            String userCSS = null;
+            if (nestLists) {
+                userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  table, caption, tbody, tfoot, thead, tr, th, td "
+                        + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
+            } else {
+                userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  ol, ul, li, table, caption, tbody, tfoot, thead, tr, th, td "
+                        + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
+            }
+            html.setUserCSS(userCSS);
+            OutputStream os = null;
             if (save) {
                 os = new FileOutputStream(template01Path + ".html");
             } else {
@@ -332,17 +327,20 @@ public class DocxFourJController {
             Docx4jProperties.setProperty("docx4j.Convert.Out.HTML.OutputMethodXML", true);
 
             Docx4J.toHTML(html, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
-        }catch(Exception e) {
 
+            if (save) {
+                System.out.println("Saved: " + template01Path + ".html ");
+            } else {
+                System.out.println(((ByteArrayOutputStream) os).toString());
+            }
+            if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
+                wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
+            }
+
+        } catch (Exception e) {
+           logger.error(e.getMessage());
         }
-        if (save) {
-            System.out.println("Saved: " + template01Path + ".html ");
-        } else {
-            System.out.println(((ByteArrayOutputStream) os).toString());
-        }
-        if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
-            wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
-        }
+
         return "docx转html文件成功";
     }
 
