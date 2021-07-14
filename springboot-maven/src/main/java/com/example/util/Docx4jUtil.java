@@ -1,8 +1,11 @@
 package com.example.util;
 
 import com.example.dto.CompositeDocxReq;
+import org.docx4j.Docx4J;
+import org.docx4j.Docx4jProperties;
 import org.docx4j.TraversalUtil;
 import org.docx4j.XmlUtils;
+import org.docx4j.convert.out.HTMLSettings;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.finders.ClassFinder;
 import org.docx4j.finders.RangeFinder;
@@ -350,6 +353,46 @@ public class Docx4jUtil {
             drawing.getAnchorOrInline().add(inline);
             run.getContent().add(drawing);
             p.getContent().add(run);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    /**
+     * docx转html文件
+     * @param inputPath
+     */
+    public static void docx2Html(String inputPath){
+        boolean nestLists = true;
+        try {
+            wordMLPackage = WordprocessingMLPackage
+                    .load(new File(inputPath));
+            HTMLSettings htmlSettings = Docx4J.createHTMLSettings();
+            htmlSettings.setImageDirPath(inputPath + "_files");
+            htmlSettings.setImageTargetUri(inputPath.substring(inputPath.lastIndexOf("/") + 1) + "_files");
+            htmlSettings.setWmlPackage(wordMLPackage);
+
+            String userCSS = null;
+            //userCSS是生成的html的样式，可以手动设置，使用此参数可以灵活的设置边距字体等信息
+            if (nestLists) {
+                userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  table, caption, tbody, tfoot, thead, tr, th, td "
+                        + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
+            } else {
+                userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  ol, ul, li, table, caption, tbody, tfoot, thead, tr, th, td "
+                        + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
+
+            }
+            htmlSettings.setUserCSS(userCSS);
+
+            Docx4jProperties.setProperty("docx4j.Convert.Out.HTML.OutputMethodXML", true);
+            Docx4J.toHTML(htmlSettings, new FileOutputStream(new File(inputPath + ".html")),
+                    Docx4J.FLAG_EXPORT_PREFER_XSL);
+
+            if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
+                wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
+            }
+            htmlSettings = null;
+            wordMLPackage = null;
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
