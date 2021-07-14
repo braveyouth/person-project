@@ -56,7 +56,7 @@ public class Docx4jUtil {
 
         OutputStream outs = null;
         try {
-            // 设置响应头
+            response.reset();
             fileName = URLEncoder.encode(fileName, "UTF-8");
             response.setContentType("application/octet-stream;charset=UTF-8");
             response.setCharacterEncoding("utf-8");
