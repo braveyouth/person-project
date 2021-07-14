@@ -309,6 +309,7 @@ public class DocxFourJController {
             html.setImageTargetUri(template01Path.substring(template01Path.lastIndexOf("/") + 1 ) + "_files");
             html.setWmlPackage(wordMLPackage);
             String userCSS = null;
+            //userCSS是生成的html的样式，可以手动设置，使用此参数可以灵活的设置边距字体等信息
             if (nestLists) {
                 userCSS = "html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, img,  table, caption, tbody, tfoot, thead, tr, th, td "
                         + "{ margin: 0; padding: 0; border: 0;}" + "body {line-height: 1;} ";
