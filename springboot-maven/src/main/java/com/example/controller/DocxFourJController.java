@@ -498,13 +498,14 @@ public class DocxFourJController {
     }
 
     /**
-     * 按占位符替换内容(替换变量、表格、图片等格式数据)
+     * 按占位符替换内容(替换变量、表格等格式数据)
      * 注意：1 占位符在word转换为xml被分离问题：
      * 1.1 原因：
      * 1.1.1 打开word模板，单词底下有红线标注，这个就是word文档的单词校验，一般组装的标识符不符合单词校验规则，在转换的过程中，会单独分开（因为底下有标注），所以就会产生占位符被分开的情况。
      * 1.2 解决方案：
      * 1.2.1 docx中先不写变量，将docx另存为xml，然后用docx打开这个xml，这时候加变量就好了，${variable}就不会被分离了，之后再另存为docx即可
      * 1.2.2 先建一个txt文本，将${variable}编辑到文本，然后复制到docx即可(推荐)
+     * 1.2.3 调用Docx4jUtil.cleanDocumentPart(MainDocumentPart documentPart)清扫 docx4j 模板变量字符,通常以${variable}形式
      */
     @GetMapping("/placeholderTable")
     public String placeholderTable(){
