@@ -98,6 +98,7 @@ public class Docx4jUtil {
                 for (int i = 0; i < dataList.size(); i++) {
                     ClassFinder find = new ClassFinder(Tbl.class);
                     new TraversalUtil(mainDocumentPart.getContent(), find);
+                    //获取到第几个表格元素
                     Tbl table = (Tbl) find.results.get(dataList.get(i).getNum());
                     //第二行约定为模板
                     Tr dynamicTr = (Tr) table.getContent().get(1);
