@@ -128,6 +128,34 @@ public class DocxFourJController {
     }
 
     /**
+     * 增加一个段落，增加完成记得保存，否则不生效
+     * 采用工厂类增加段落的方法
+     */
+    @GetMapping("/addParagraph2")
+    public String addParagraph2() {
+
+        String simpleText = "addParagraph2";
+        try {
+            wordMLPackage = WordprocessingMLPackage
+                    .load(new File(template01Path));
+            factory = Context.getWmlObjectFactory();
+            P para = factory.createP();
+            if (simpleText != null) {
+                Text t = factory.createText();
+                t.setValue(simpleText);
+                R run = factory.createR();
+                run.getContent().add(t);
+                para.getContent().add(run);
+            }
+            wordMLPackage.getMainDocumentPart().getContent().add(para);
+            wordMLPackage.save(new File(template01OutPath));
+        } catch (Exception e) {
+            logger.error("addParagraph to docx error: Docx4JException", e);
+        }
+        return "追加文档内容成功";
+    }
+
+    /**
      * 插入图片
      */
     @GetMapping("/wordInsertImage")
@@ -164,7 +192,10 @@ public class DocxFourJController {
                 for (int j = 0; j < 3; j++) {
                     Tc tc = factory.createTc();
 
-                    //3.1
+                    //3.1 查看createParagraphOfText(str)的源码
+                    // 3.1.1.创建一个text，并设置其值，
+                    // 3.1.2.创建一个R并将text增加到R中，
+                    // 3.1.3.创建一个P将R加到P中
 //                    P p = mainDocumentPart.createParagraphOfText("---row" + i + "---column" + j + "---");
 
                     //3.2 第二种创建P并设置样式的方法
