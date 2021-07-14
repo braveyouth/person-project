@@ -336,6 +336,8 @@ public class DocxFourJController {
             if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
                 wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
             }
+            html = null;
+            wordMLPackage = null;
 
         } catch (Exception e) {
            logger.error(e.getMessage());
