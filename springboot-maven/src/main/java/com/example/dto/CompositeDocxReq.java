@@ -23,6 +23,8 @@ public class CompositeDocxReq {
         private List<Map<String , Object>> dataInnerList;
         //处于docx中的表格序号，从0开始
         private Integer num;
+        //模板占位符变量行数，从0开始
+        private Integer trNum;
 
         public List<Map<String, Object>> getDataInnerList() {
             return dataInnerList;
@@ -38,6 +40,14 @@ public class CompositeDocxReq {
 
         public void setNum(Integer num) {
             this.num = num;
+        }
+
+        public Integer getTrNum() {
+            return trNum;
+        }
+
+        public void setTrNum(Integer trNum) {
+            this.trNum = trNum;
         }
     }
 

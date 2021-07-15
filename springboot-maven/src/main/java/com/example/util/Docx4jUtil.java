@@ -99,12 +99,14 @@ public class Docx4jUtil {
 
                 //构造循环列表的变量数据
                 for (int i = 0; i < dataList.size(); i++) {
+                    Integer num = dataList.get(i).getNum();
+                    Integer trNum = dataList.get(i).getTrNum();
                     ClassFinder find = new ClassFinder(Tbl.class);
                     new TraversalUtil(mainDocumentPart.getContent(), find);
                     //获取到第几个表格元素
-                    Tbl table = (Tbl) find.results.get(dataList.get(i).getNum());
+                    Tbl table = (Tbl) find.results.get(num.intValue());
                     //第二行约定为模板
-                    Tr dynamicTr = (Tr) table.getContent().get(1);
+                    Tr dynamicTr = (Tr) table.getContent().get(trNum.intValue());
                     //获取模板行的xml数据
                     String dynamicTrXml = XmlUtils.marshaltoString(dynamicTr);
                     for (Map<String, Object> dataMap : dataList.get(i).getDataInnerList()) {
@@ -113,7 +115,7 @@ public class Docx4jUtil {
                         table.getContent().add(newTr);
                     }
                     //删除模板行的占位行
-                    table.getContent().remove(1);
+                    table.getContent().remove(trNum.intValue());
                 }
 
                 //插入图片
