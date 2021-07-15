@@ -336,21 +336,16 @@ public class Docx4jUtil {
             // 这儿可以对单个书签进行操作，也可以用一个map对所有的书签进行处理
             // 获取该书签的父级段落
             P p = (P) (bm.getParent());
-            // R对象是匿名的复杂类型，然而我并不知道具体啥意思，估计这个要好好去看看ooxml才知道
+            // R对象是匿名的复杂类型
             R run = factory.createR();
+
             // 读入图片并转化为字节数组，因为docx4j只能字节数组的方式插入图片
             byte[] bytes = IOUtils.toByteArray(new FileInputStream(file));
-
-            // InputStream is = new FileInputStream;
-            // byte[] bytes = IOUtils.toByteArray(inputStream);
-            // byte[] bytes = FileUtil.getByteFormBase64DataByImage("");
             // 开始创建一个行内图片
             BinaryPartAbstractImage imagePart = BinaryPartAbstractImage.createImagePart(wPackage, bytes);
-            // createImageInline函数的前四个参数我都没有找到具体啥意思，，，，
-            // 最有一个是限制图片的宽度，缩放的依据
+            // 创建内联对象，createImageInline函数最后一个参数是限制图片的宽度，缩放的依据
             Inline inline = imagePart.createImageInline(null, null, 0, 1, false, 0);
             // 获取该书签的父级段落
-            // drawing理解为画布？
             Drawing drawing = factory.createDrawing();
             drawing.getAnchorOrInline().add(inline);
             run.getContent().add(drawing);
