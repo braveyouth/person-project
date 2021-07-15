@@ -636,15 +636,21 @@ public class DocxFourJController {
 
         //处理好数据后就是超级简单的调用
         byte[] bytes = Docx4jUtilBuilder.of(template02Path)
-//                .addParam("title", "测试文档标题")
-//                .addParam("user", "测试人")
-//                .addParams(m)
+                .addParam("title", "测试文档标题")
+                .addParam("user", "测试人")
+                .addParams(m)
 //                .addTable("name", 2, list)
-                .addImg("pic02", img)
+//                .addImg("pic03", img)
                 .get();
 
         ServletOutputStream outputStream = null;
         try {
+            response.reset();
+            String fileName = URLEncoder.encode("导出", "UTF-8");
+            response.setContentType("application/octet-stream;charset=UTF-8");
+            response.setCharacterEncoding("utf-8");
+            response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".docx");
+            response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
             outputStream = response.getOutputStream();
             outputStream.flush();
             outputStream.write(bytes);
