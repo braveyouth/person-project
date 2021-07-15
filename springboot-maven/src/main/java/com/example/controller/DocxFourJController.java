@@ -5,6 +5,7 @@ import com.example.dto.CompositeDocxReq;
 import com.example.util.DocImageHandler;
 import com.example.util.Docx4jUtil;
 import com.example.util.Docx4jUtilBuilder;
+import com.example.util.Docx4jUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.docx4j.Docx4J;
@@ -745,6 +746,17 @@ public class DocxFourJController {
         }
 
         return "综合使用调用成功";
+    }
+
+    @GetMapping("/docx4jUtils")
+    public void method(){
+        try {
+            WordprocessingMLPackage wordprocessingMLPackage = Docx4jUtils.createWordprocessingMLPackage();
+            Docx4jUtils.createTable(wordprocessingMLPackage, 3,3);
+            Docx4jUtils.saveWordPackage(wordprocessingMLPackage, new File(template02outPath));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
